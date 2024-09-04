@@ -32,11 +32,6 @@ out/
 *.a
 *.lib
 
-# Executables
-*.exe
-*.out
-*.app
-
 ### CMake ###
 CMakeLists.txt.user
 CMakeCache.txt

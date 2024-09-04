@@ -1,7 +1,7 @@
 # Fully Linear PCP Simulator for Inner Product Circuits
 
-This repository is the C++ implementation of the improved version of original FLPCP for inner product circuit.
-Fully linear PCP (FLPCP) is zero-knowledge proof scheme which can be efficiently applied on distributed or secret-shared data by leveraging short linear proofs.
+This repository is the C++ implementation of the improved version of fully linear PCP for inner product circuit.
+[Fully linear PCP (FLPCP)](https://eprint.iacr.org/2019/188.pdf) is zero-knowledge proof scheme which can be efficiently applied on distributed or secret-shared data by leveraging short linear proofs.
 
 This project has been developed on Visual Studio CMake project and Windows 11 environment.
 
@@ -16,9 +16,8 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 
 ## Experiment Results
 
-CPU: AMD Ryzen 9 7950X 16-Core Processor @ 5.00 GHz (Only used a single core)
-
-Memory: DDR5 32GB x2
+* CPU: AMD Ryzen 9 7950X 16-Core Processor @ 5.00 GHz (Only used a single core)
+* Memory: DDR5 32GB x2
 
 ### FLPCP Complexity (Baseline)
 
@@ -212,7 +211,7 @@ Length: 128 / Min time : 0.718040000 / Best schedule : 6 11 2
 Length: 256 / Min time : 0.963380000 / Best schedule : 4 4 8 2
 Length: 512 / Min time : 1.236580000 / Best schedule : 4 6 11 2
 Length: 1024 / Min time : 1.841060000 / Best schedule : 3 4 5 9 2
-0.166800000, 0.354660000, 0.359740000, 0.380000000, 0.491220000, 0.609540000, 0.718040000, 0.963380000, 1.236580000, 1.841060000,
+
 FLIOP Coeff. LAN Min schedule
 Length: 2 / Min time : 0.164100 / Best schedule : 2
 Length: 4 / Min time : 0.350260000 / Best schedule : 2 2
@@ -224,7 +223,7 @@ Length: 128 / Min time : 0.558400000 / Best schedule : 8 8 2
 Length: 256 / Min time : 0.576580000 / Best schedule : 13 10 2
 Length: 512 / Min time : 0.609440000 / Best schedule : 16 16 2
 Length: 1024 / Min time : 0.673580000 / Best schedule : 16 32 2
-0.164100000, 0.350260000, 0.352240000, 0.357400000, 0.367720000, 0.389260000, 0.558400000, 0.576580000, 0.609440000, 0.673580000,
+
 FLIOP LAN Delay
 Length: 2 / Time : 0.166800000
 Length: 4 / Time : 0.354660000
@@ -236,7 +235,7 @@ Length: 128 / Time : 1.423460000
 Length: 256 / Time : 1.752320000
 Length: 512 / Time : 2.230880000
 Length: 1024 / Time : 3.005640000
-0.166800000, 0.354660000, 0.544520000, 0.739780000, 0.943640000, 1.166100000, 1.423460000, 1.752320000, 2.230880000, 3.005640000,
+
 FLIOP Coeff. LAN Delay
 Length: 2 / Time : 0.164100000
 Length: 4 / Time : 0.350260000
@@ -248,7 +247,6 @@ Length: 128 / Time : 1.313360000
 Length: 256 / Time : 1.535720000
 Length: 512 / Time : 1.795980000
 Length: 1024 / Time : 2.127540000
-0.164100000, 0.350260000, 0.536920000, 0.725280000, 0.915340000, 1.109900000, 1.313360000, 1.535720000, 1.795980000, 2.127540000,
 ```
 
 ### WAN
@@ -268,7 +266,7 @@ Length: 128 / Min time : 717.596300000 / Best schedule : 8 8 2
 Length: 256 / Min time : 727.479900000 / Best schedule : 10 13 2
 Length: 512 / Min time : 741.256800000 / Best schedule : 16 16 2
 Length: 1024 / Min time : 764.175700000 / Best schedule : 19 27 2
-210.209000000, 455.652700000, 458.375700000, 463.831800000, 474.814700000, 497.355500000, 717.596300000, 727.479900000, 741.256800000, 764.175700000,
+
 FLIOP Coeff. WAN Min schedule
 Length: 2 / Min time : 210.206300000 / Best schedule : 2
 Length: 4 / Min time : 455.648300000 / Best schedule : 2 2
@@ -280,7 +278,7 @@ Length: 128 / Min time : 717.419800000 / Best schedule : 8 8 2
 Length: 256 / Min time : 726.950700000 / Best schedule : 13 10 2
 Length: 512 / Min time : 739.214200000 / Best schedule : 16 16 2
 Length: 1024 / Min time : 758.305600000 / Best schedule : 19 27 2
-210.206300000, 455.648300000, 458.368200000, 463.809200000, 474.691200000, 496.456100000, 717.419800000, 726.950700000, 739.214200000, 758.305600000,
+
 FLIOP WAN Delay
 Length: 2 / Time : 210.209000000
 Length: 4 / Time : 455.652700000
@@ -292,7 +290,7 @@ Length: 128 / Time : 1683.000700000
 Length: 256 / Time : 1928.585400000
 Length: 512 / Time : 2174.319800000
 Length: 1024 / Time : 2420.350400000
-210.209000000, 455.652700000, 701.098400000, 946.549500000, 1192.009200000, 1437.487500000, 1683.000700000, 1928.585400000, 2174.319800000, 2420.350400000,
+
 FLIOP Coeff. WAN Delay
 Length: 2 / Time : 210.206300000
 Length: 4 / Time : 455.648300000
@@ -304,7 +302,6 @@ Length: 128 / Time : 1682.890600000
 Length: 256 / Time : 1928.368800000
 Length: 512 / Time : 2173.884900000
 Length: 1024 / Time : 2419.472300000
-210.206300000, 455.648300000, 701.090800000, 946.535000000, 1191.980900000, 1437.431300000, 1682.890600000, 1928.368800000, 2173.884900000, 2419.472300000,
 ```
 
 ## Reference

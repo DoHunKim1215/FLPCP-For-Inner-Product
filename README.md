@@ -17,6 +17,7 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 ## Experiment Results
 
 CPU: AMD Ryzen 9 7950X 16-Core Processor @ 5.00 GHz (Only used a single core)
+
 Memory: DDR5 32GB x2
 
 ### FLPCP Complexity (Baseline)

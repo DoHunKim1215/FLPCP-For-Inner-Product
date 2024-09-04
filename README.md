@@ -152,7 +152,7 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
     
     ![FLIOP_VERIFIER_TIME.png](./figure/FLIOP/FLIOP_VERIFIER_TIME.png)
     
-    Preduction: $O(\log_2{N})$
+    Prediction: $O(\log_2{N})$
     
     Measured: $O(\sqrt[4]{N})$
     

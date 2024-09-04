@@ -1,7 +1,7 @@
 # Fully Linear PCP Simulator for Inner Product Circuits
 
 This repository is the C++ implementation of the improved version of original FLPCP for inner product circuit.
-Fully linear PCP (FLPCP) is zero-knowledge proof scheme which can be efficiently applied on distributed or secret-shared data by leveraging short linear proofs. ([Dan Boneh et al. 2019](#Reference))
+Fully linear PCP (FLPCP) is zero-knowledge proof scheme which can be efficiently applied on distributed or secret-shared data by leveraging short linear proofs.
 
 This project has been developed on Visual Studio CMake project and Windows 11 environment.
 

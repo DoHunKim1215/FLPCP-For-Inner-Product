@@ -3,7 +3,7 @@
 This repository is the C++ implementation of the improved version of original FLPCP for inner product circuit.
 Fully linear PCP (FLPCP) is zero-knowledge proof scheme which can be efficiently applied on distributed or secret-shared data by leveraging short linear proofs. ([Dan Boneh et al. 2019](#Reference))
 
-This project is developed on Visual Studio CMake project and Windows 11 environment.
+This project has been developed on Visual Studio CMake project and Windows 11 environment.
 
 ## Project Structure
 
@@ -15,6 +15,9 @@ This project is developed on Visual Studio CMake project and Windows 11 environm
 * `win-x64-release` - complied executable files for x64 windows environment.
 
 ## Experiment Results
+
+CPU: AMD Ryzen 9 7950X 16-Core Processor @ 5.00 GHz (Only used a single core)
+Memory: DDR5 32GB x2
 
 ### FLPCP Complexity (Baseline)
 

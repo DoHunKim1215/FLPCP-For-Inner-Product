@@ -4,8 +4,8 @@
 #include <limits>
 #include <random>
 
-#include "performance_measurement.h"
-#include "..\math\mpint32.h"
+#include "performance_measurement.hpp"
+#include "..\math\mpint32.hpp"
 
 uint32_t PerformanceMeasurement::ReduceInt32To31(uint32_t x)
 {

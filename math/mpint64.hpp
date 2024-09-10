@@ -18,6 +18,8 @@ public:
     static void SetSeed(uint32_t seed);
 
     static Mpint64 GenerateRandom();
+    static Mpint64 GenerateRandomAbove(uint64_t min);
+    static void Reverse(Mpint64* begin, Mpint64* end);
 
     Mpint64 Invert() const;
     Mpint64 Pow(uint64_t exp) const;

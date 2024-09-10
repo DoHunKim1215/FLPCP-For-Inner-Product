@@ -7,7 +7,7 @@ endif()
 
 project ("FLPCP")
 
-add_executable (FLPCP "main.cpp"  "math/mpint32.h" "math/mpint32.cpp" "circuit/inner_product_circuit.cpp" "circuit/inner_product_circuit.h" "math/polynomial.cpp" "math/polynomial.h" "unit/proof.cpp" "unit/proof.h" "unit/query.cpp" "unit/query.h" "unit/interactive_proof.cpp" "unit/interactive_proof.h" "experiments/two_party_computation.cpp" "experiments/two_party_computation.h" "experiments/three_party_computation.cpp" "experiments/three_party_computation.h" "experiments/performance_measurement.cpp" "experiments/performance_measurement.h" "math/mpint64.cpp" "math/mpint64.h"  )
+add_executable (FLPCP "main.cpp"  "math/mpint32.hpp" "math/mpint32.cpp"  "circuit/inner_product_circuit.hpp"  "math/polynomial.hpp"  "unit/proof.hpp"  "unit/query.hpp"  "unit/interactive_proof.hpp"  "experiments/two_party_computation.hpp"  "experiments/three_party_computation.hpp" "experiments/performance_measurement.cpp" "experiments/performance_measurement.hpp" "math/mpint64.cpp" "math/mpint64.hpp"  )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET FLPCP PROPERTY CXX_STANDARD 20)

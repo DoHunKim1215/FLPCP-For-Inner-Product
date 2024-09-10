@@ -1,6 +1,6 @@
 #include <cassert>
 
-#include "mpint32.h"
+#include "mpint32.hpp"
 
 /* Initialize static members */
 uint32_t Mpint32::sSeed = 0u;

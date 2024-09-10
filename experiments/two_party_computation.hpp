@@ -1,48 +1,68 @@
-#include <cassert>
+#ifndef TWO_PARTY_COMPUTATION_H
+#define TWO_PARTY_COMPUTATION_H
+
 #include <chrono>
 #include <iostream>
 
-#include "two_party_computation.h"
+#include "../unit/proof.hpp"
+#include "../circuit/inner_product_circuit.hpp"
 
-#include "..\math\mpint32.h"
-#include "..\math\polynomial.h"
-#include "..\circuit\inner_product_circuit.h"
-
-using namespace std;
-
-// Fully Linear PCP between one prover and one verifier
-FLPCPMeasurement TwoPC::FLPCP(size_t inputLength, size_t nGGate)
+struct FLPCPMeasurement
 {
-    Mpint32::SetSeed(10);
+    size_t proofLength;
+    size_t nQueries;
+    double proverTime;
+    double verifierTime;
+    bool isVaild;
+};
 
-    Mpint32* const op0 = new Mpint32[inputLength];
+template <typename Int> class TwoPC
+{
+public:
+    static FLPCPMeasurement FLPCP(size_t inputLength, size_t nGGate);
+    static void ExperimentFLPCP();
+    static void ExperimentFLPCPSqrt();
+    static FLPCPMeasurement FLPCPCoefficient(size_t inputLength, size_t nGGate);
+    static void ExperimentFLPCPCoefficient();
+    static void ExperimentFLPCPCoefficientSqrt();
+    static FLPCPMeasurement FLIOP(const size_t inputLength, const size_t compressFactor);
+    static void ExperimentFLIOP();
+    static FLPCPMeasurement FLIOPCoefficient(const size_t inputLength, const size_t compressFactor);
+    static void ExperimentFLIOPCoefficient();
+};
+
+template <typename Int> FLPCPMeasurement TwoPC<Int>::FLPCP(size_t inputLength, size_t nGGate)
+{
+    Int::SetSeed(10);
+
+    Int* const op0 = new Int[inputLength];
     for (size_t i = 0; i < inputLength; ++i)
     {
-        op0[i] = Mpint32::GenerateRandom();
+        op0[i] = Int::GenerateRandom();
     }
 
-    Mpint32* const op1 = new Mpint32[inputLength];
+    Int* const op1 = new Int[inputLength];
     for (size_t i = 0; i < inputLength; ++i)
     {
-        op1[i] = Mpint32::GenerateRandom();
+        op1[i] = Int::GenerateRandom();
     }
 
-    const Mpint32 trueResult = InnerProductCircuit::Forward(op0, op1, inputLength);
+    const Int trueResult = InnerProductCircuit<Int>::Forward(op0, op1, inputLength);
 
     // Prover make proof vector : (inputs || constant terms || coefficients)
-    auto start_proof = chrono::high_resolution_clock::now();
-    Proof proof = InnerProductCircuit::MakeProof(op0, op1, inputLength, nGGate);
-    auto end_proof = chrono::high_resolution_clock::now();
-    double time_taken_proof = chrono::duration_cast<chrono::nanoseconds>(end_proof - start_proof).count();
+    auto start_proof = std::chrono::high_resolution_clock::now();
+    Proof<Int> proof = InnerProductCircuit<Int>::MakeProof(op0, op1, inputLength, nGGate);
+    auto end_proof = std::chrono::high_resolution_clock::now();
+    double time_taken_proof = std::chrono::duration_cast<std::chrono::nanoseconds>(end_proof - start_proof).count();
 
     // Verifier make queries and perform inner products between proof and queries.
     // Assumption : Verifier only has linear access on proof vector.
-    auto start_query = chrono::high_resolution_clock::now();
-    std::vector<Query> queries =
-        InnerProductCircuit::MakeQuery(Mpint32::GenerateRandomAbove(nGGate + 1), nGGate, inputLength);
-    
+    auto start_query = std::chrono::high_resolution_clock::now();
+    std::vector<Query<Int>> queries =
+        InnerProductCircuit<Int>::MakeQuery(Int::GenerateRandomAbove(nGGate + 1), nGGate, inputLength);
+
     const size_t nInputQueriesHalf = (queries.size() - 2u) / 2u;
-    Mpint32 gR(0u);
+    Int gR(0u);
     for (size_t i = 0; i < nInputQueriesHalf; ++i)
     {
         gR += proof.GetQueryAnswer(queries[i]) * proof.GetQueryAnswer(queries[i + nInputQueriesHalf]);
@@ -51,8 +71,8 @@ FLPCPMeasurement TwoPC::FLPCP(size_t inputLength, size_t nGGate)
     bool isValid = (proof.GetQueryAnswer(queries[queries.size() - 2u]) == gR) &&
                    (proof.GetQueryAnswer(queries[queries.size() - 1u]) == trueResult);
 
-    auto end_query = chrono::high_resolution_clock::now();
-    double time_taken_query = chrono::duration_cast<chrono::nanoseconds>(end_query - start_query).count();
+    auto end_query = std::chrono::high_resolution_clock::now();
+    double time_taken_query = std::chrono::duration_cast<std::chrono::nanoseconds>(end_query - start_query).count();
 
     delete[] op0;
     delete[] op1;
@@ -61,13 +81,13 @@ FLPCPMeasurement TwoPC::FLPCP(size_t inputLength, size_t nGGate)
                             isValid);
 }
 
-void TwoPC::ExperimentFLPCP()
+template <typename Int> void TwoPC<Int>::ExperimentFLPCP()
 {
     size_t j = 0;
     FLPCPMeasurement measures[10];
     for (size_t i = 1; i <= 10; ++i)
     {
-        measures[j] = TwoPC::FLPCP(i * i * 10, i * i * 10);
+        measures[j] = TwoPC<Int>::FLPCP(i * i * 10, i * i * 10);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;
@@ -118,13 +138,13 @@ void TwoPC::ExperimentFLPCP()
     std::cout << std::endl;
 }
 
-void TwoPC::ExperimentFLPCPSqrt()
+template <typename Int> void TwoPC<Int>::ExperimentFLPCPSqrt()
 {
     size_t j = 0;
     FLPCPMeasurement measures[10];
     for (size_t i = 10; i <= 100; i += 10)
     {
-        measures[j] = TwoPC::FLPCP(i * i, i);
+        measures[j] = TwoPC<Int>::FLPCP(i * i, i);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;
@@ -176,35 +196,35 @@ void TwoPC::ExperimentFLPCPSqrt()
 }
 
 // Fully Linear PCP using input as coefficient of polynomials
-FLPCPMeasurement TwoPC::FLPCPCoefficient(size_t inputLength, size_t nPoly)
+template <typename Int> FLPCPMeasurement TwoPC<Int>::FLPCPCoefficient(size_t inputLength, size_t nPoly)
 {
-    Mpint32::SetSeed(10);
+    Int::SetSeed(10);
 
-    Mpint32* const op0 = new Mpint32[inputLength];
+    Int* const op0 = new Int[inputLength];
     for (size_t i = 0; i < inputLength; ++i)
     {
-        op0[i] = Mpint32::GenerateRandom();
+        op0[i] = Int::GenerateRandom();
     }
 
-    Mpint32* const op1 = new Mpint32[inputLength];
+    Int* const op1 = new Int[inputLength];
     for (size_t i = 0; i < inputLength; ++i)
     {
-        op1[i] = Mpint32::GenerateRandom();
+        op1[i] = Int::GenerateRandom();
     }
 
-    const Mpint32 trueResult = InnerProductCircuit::Forward(op0, op1, inputLength);
+    const Int trueResult = InnerProductCircuit<Int>::Forward(op0, op1, inputLength);
 
-    auto start_proof = chrono::high_resolution_clock::now();
-    Proof proof = InnerProductCircuit::MakeCoefficientProof(op0, op1, inputLength, nPoly);
-    auto end_proof = chrono::high_resolution_clock::now();
-    double time_taken_proof = chrono::duration_cast<chrono::nanoseconds>(end_proof - start_proof).count();
+    auto start_proof = std::chrono::high_resolution_clock::now();
+    Proof<Int> proof = InnerProductCircuit<Int>::MakeCoefficientProof(op0, op1, inputLength, nPoly);
+    auto end_proof = std::chrono::high_resolution_clock::now();
+    double time_taken_proof = std::chrono::duration_cast<std::chrono::nanoseconds>(end_proof - start_proof).count();
 
-    auto start_query = chrono::high_resolution_clock::now();
-    std::vector<Query> queries =
-        InnerProductCircuit::MakeCoefficientQuery(Mpint32::GenerateRandom(), inputLength, nPoly);
-    
+    auto start_query = std::chrono::high_resolution_clock::now();
+    std::vector<Query<Int>> queries =
+        InnerProductCircuit<Int>::MakeCoefficientQuery(Int::GenerateRandom(), inputLength, nPoly);
+
     const size_t nInputQueriesHalf = (queries.size() - 2u) / 2u;
-    Mpint32 gR(0u);
+    Int gR(0u);
     for (size_t i = 0; i < nInputQueriesHalf; ++i)
     {
         gR += proof.GetQueryAnswer(queries[i]) * proof.GetQueryAnswer(queries[i + nInputQueriesHalf]);
@@ -213,8 +233,8 @@ FLPCPMeasurement TwoPC::FLPCPCoefficient(size_t inputLength, size_t nPoly)
     bool isValid = (proof.GetQueryAnswer(queries[queries.size() - 2u]) == gR) &&
                    (proof.GetQueryAnswer(queries[queries.size() - 1u]) == trueResult);
 
-    auto end_query = chrono::high_resolution_clock::now();
-    double time_taken_query = chrono::duration_cast<chrono::nanoseconds>(end_query - start_query).count();
+    auto end_query = std::chrono::high_resolution_clock::now();
+    double time_taken_query = std::chrono::duration_cast<std::chrono::nanoseconds>(end_query - start_query).count();
 
     delete[] op0;
     delete[] op1;
@@ -223,13 +243,13 @@ FLPCPMeasurement TwoPC::FLPCPCoefficient(size_t inputLength, size_t nPoly)
                             isValid);
 }
 
-void TwoPC::ExperimentFLPCPCoefficient()
+template <typename Int> void TwoPC<Int>::ExperimentFLPCPCoefficient()
 {
     size_t j = 0;
     FLPCPMeasurement measures[10];
     for (size_t i = 1; i <= 10; ++i)
     {
-        measures[j] = TwoPC::FLPCPCoefficient(i * i * 10, 1);
+        measures[j] = TwoPC<Int>::FLPCPCoefficient(i * i * 10, 1);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;
@@ -280,13 +300,13 @@ void TwoPC::ExperimentFLPCPCoefficient()
     std::cout << std::endl;
 }
 
-void TwoPC::ExperimentFLPCPCoefficientSqrt()
+template <typename Int> void TwoPC<Int>::ExperimentFLPCPCoefficientSqrt()
 {
     size_t j = 0;
     FLPCPMeasurement measures[10];
     for (size_t i = 10; i <= 100; i += 10)
     {
-        measures[j] = TwoPC::FLPCPCoefficient(i * i, i);
+        measures[j] = TwoPC<Int>::FLPCPCoefficient(i * i, i);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;
@@ -337,19 +357,19 @@ void TwoPC::ExperimentFLPCPCoefficientSqrt()
     std::cout << std::endl;
 }
 
-FLPCPMeasurement TwoPC::FLIOP(const size_t inputLength, const size_t compressFactor)
+template <typename Int> FLPCPMeasurement TwoPC<Int>::FLIOP(const size_t inputLength, const size_t compressFactor)
 {
-    Mpint32::SetSeed(10u);
+    Int::SetSeed(10u);
 
-    std::vector<Mpint32> op0(inputLength); 
+    std::vector<Int> op0(inputLength);
     for (size_t i = 0; i < inputLength; ++i)
     {
-        op0[i] = Mpint32::GenerateRandom();
+        op0[i] = Int::GenerateRandom();
     }
-    std::vector<Mpint32> op1(inputLength);
+    std::vector<Int> op1(inputLength);
     for (size_t i = 0; i < inputLength; ++i)
     {
-        op1[i] = Mpint32::GenerateRandom();
+        op1[i] = Int::GenerateRandom();
     }
 
     double time_taken_proof = 0.;
@@ -358,52 +378,53 @@ FLPCPMeasurement TwoPC::FLIOP(const size_t inputLength, const size_t compressFac
     size_t totalQueryComplexity = 0u;
 
     bool isValid = true;
-    Mpint32 out = InnerProductCircuit::Forward(op0.data(), op1.data(), inputLength);
+    Int out = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), inputLength);
     while (ceil(op0.size() / (double)compressFactor) > 1)
     {
-        auto start_proof = chrono::high_resolution_clock::now();
-        InteractiveProof proof =
-            InnerProductCircuit::MakeRoundProof(op0.data(), op1.data(), op0.size(), compressFactor);
-        auto end_proof = chrono::high_resolution_clock::now();
-        time_taken_proof += chrono::duration_cast<chrono::nanoseconds>(end_proof - start_proof).count();
+        auto start_proof = std::chrono::high_resolution_clock::now();
+        InteractiveProof<Int> proof =
+            InnerProductCircuit<Int>::MakeRoundProof(op0.data(), op1.data(), op0.size(), compressFactor);
+        auto end_proof = std::chrono::high_resolution_clock::now();
+        time_taken_proof += std::chrono::duration_cast<std::chrono::nanoseconds>(end_proof - start_proof).count();
 
-        auto start_query = chrono::high_resolution_clock::now();
-        Mpint32 random = Mpint32::GenerateRandom();
-        std::vector<Query> queries = InnerProductCircuit::MakeRoundQuery(random, compressFactor);
+        auto start_query = std::chrono::high_resolution_clock::now();
+        Int random = Int::GenerateRandom();
+        std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeRoundQuery(random, compressFactor);
         isValid = isValid && (out == proof.GetQueryAnswer(queries[0]));
         out = proof.GetQueryAnswer(queries[1]);
-        auto end_query = chrono::high_resolution_clock::now();
-        time_taken_query += chrono::duration_cast<chrono::nanoseconds>(end_query - start_query).count();
+        auto end_query = std::chrono::high_resolution_clock::now();
+        time_taken_query += std::chrono::duration_cast<std::chrono::nanoseconds>(end_query - start_query).count();
 
-        start_proof = chrono::high_resolution_clock::now();
+        start_proof = std::chrono::high_resolution_clock::now();
         op0 = proof.EvaluatePolyPs(random);
         op1 = proof.EvaluatePolyQs(random);
-        end_proof = chrono::high_resolution_clock::now();
-        time_taken_proof += chrono::duration_cast<chrono::nanoseconds>(end_proof - start_proof).count();
+        end_proof = std::chrono::high_resolution_clock::now();
+        time_taken_proof += std::chrono::duration_cast<std::chrono::nanoseconds>(end_proof - start_proof).count();
 
         totalProofSize += proof.GetBytes();
         totalQueryComplexity += 2;
     }
 
-    auto start_proof = chrono::high_resolution_clock::now();
-    Proof proof = InnerProductCircuit::MakeProof(op0.data(), op1.data(), op0.size(), op0.size());
-    auto end_proof = chrono::high_resolution_clock::now();
-    time_taken_proof += chrono::duration_cast<chrono::nanoseconds>(end_proof - start_proof).count();
+    auto start_proof = std::chrono::high_resolution_clock::now();
+    Proof<Int> proof = InnerProductCircuit<Int>::MakeProof(op0.data(), op1.data(), op0.size(), op0.size());
+    auto end_proof = std::chrono::high_resolution_clock::now();
+    time_taken_proof += std::chrono::duration_cast<std::chrono::nanoseconds>(end_proof - start_proof).count();
 
-    auto start_query = chrono::high_resolution_clock::now();
-    std::vector<Query> queries = InnerProductCircuit::MakeQuery(Mpint32::GenerateRandom(), op0.size(), op0.size());
-    
+    auto start_query = std::chrono::high_resolution_clock::now();
+    std::vector<Query<Int>> queries =
+        InnerProductCircuit<Int>::MakeQuery(Int::GenerateRandom(), op0.size(), op0.size());
+
     const size_t nInputQueriesHalf = (queries.size() - 2u) / 2u;
-    Mpint32 gR(0u);
+    Int gR(0u);
     for (size_t i = 0; i < nInputQueriesHalf; ++i)
     {
         gR += proof.GetQueryAnswer(queries[i]) * proof.GetQueryAnswer(queries[i + nInputQueriesHalf]);
     }
     isValid = isValid && (proof.GetQueryAnswer(queries[queries.size() - 2u]) == gR) &&
               (proof.GetQueryAnswer(queries[queries.size() - 1u]) == out);
-    
-    auto end_query = chrono::high_resolution_clock::now();
-    time_taken_query += chrono::duration_cast<chrono::nanoseconds>(end_query - start_query).count();
+
+    auto end_query = std::chrono::high_resolution_clock::now();
+    time_taken_query += std::chrono::duration_cast<std::chrono::nanoseconds>(end_query - start_query).count();
 
     totalProofSize += proof.GetBytes();
     totalQueryComplexity += queries.size();
@@ -412,13 +433,13 @@ FLPCPMeasurement TwoPC::FLIOP(const size_t inputLength, const size_t compressFac
                             isValid);
 }
 
-void TwoPC::ExperimentFLIOP()
+template <typename Int> void TwoPC<Int>::ExperimentFLIOP()
 {
     size_t j = 0;
     FLPCPMeasurement measures[10];
     for (size_t i = 4; i <= pow(4, 10); i *= 4)
     {
-        measures[j] = TwoPC::FLIOP(i, 2);
+        measures[j] = TwoPC<Int>::FLIOP(i, 2);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;
@@ -462,19 +483,20 @@ void TwoPC::ExperimentFLIOP()
     std::cout << std::endl;
 }
 
-FLPCPMeasurement TwoPC::FLIOPCoefficient(const size_t inputLength, const size_t compressFactor)
+template <typename Int>
+FLPCPMeasurement TwoPC<Int>::FLIOPCoefficient(const size_t inputLength, const size_t compressFactor)
 {
-    Mpint32::SetSeed(10u);
+    Int::SetSeed(10u);
 
-    std::vector<Mpint32> op0(inputLength);
+    std::vector<Int> op0(inputLength);
     for (size_t i = 0; i < inputLength; ++i)
     {
-        op0[i] = Mpint32::GenerateRandom();
+        op0[i] = Int::GenerateRandom();
     }
-    std::vector<Mpint32> op1(inputLength);
+    std::vector<Int> op1(inputLength);
     for (size_t i = 0; i < inputLength; ++i)
     {
-        op1[i] = Mpint32::GenerateRandom();
+        op1[i] = Int::GenerateRandom();
     }
 
     double time_taken_proof = 0.;
@@ -484,46 +506,48 @@ FLPCPMeasurement TwoPC::FLIOPCoefficient(const size_t inputLength, const size_t 
     size_t totalQueryComplexity = 0u;
 
     bool isValid = true;
-    Mpint32 out = InnerProductCircuit::Forward(op0.data(), op1.data(), inputLength);
+    Int out = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), inputLength);
     while (ceil(op0.size() / (double)compressFactor) > 1)
     {
-        auto start_proof = chrono::high_resolution_clock::now();
-        InteractiveProof proof = InnerProductCircuit::MakeRoundCoefficientProof(op0.data(), op1.data(), op0.size(), compressFactor);
-        auto end_proof = chrono::high_resolution_clock::now();
-        time_taken_proof += chrono::duration_cast<chrono::nanoseconds>(end_proof - start_proof).count();
+        auto start_proof = std::chrono::high_resolution_clock::now();
+        InteractiveProof<Int> proof =
+            InnerProductCircuit<Int>::MakeRoundCoefficientProof(op0.data(), op1.data(), op0.size(), compressFactor);
+        auto end_proof = std::chrono::high_resolution_clock::now();
+        time_taken_proof += std::chrono::duration_cast<std::chrono::nanoseconds>(end_proof - start_proof).count();
 
-        auto start_query = chrono::high_resolution_clock::now();
-        Mpint32 random = Mpint32::GenerateRandom();
-        std::vector<Query> queries = InnerProductCircuit::MakeRoundCoefficientQuery(random, compressFactor);
+        auto start_query = std::chrono::high_resolution_clock::now();
+        Int random = Int::GenerateRandom();
+        std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeRoundCoefficientQuery(random, compressFactor);
         isValid = isValid && (out == proof.GetQueryAnswer(queries[0]));
         out = proof.GetQueryAnswer(queries[1]);
-        auto end_query = chrono::high_resolution_clock::now();
-        time_taken_query += chrono::duration_cast<chrono::nanoseconds>(end_query - start_query).count();
+        auto end_query = std::chrono::high_resolution_clock::now();
+        time_taken_query += std::chrono::duration_cast<std::chrono::nanoseconds>(end_query - start_query).count();
 
-        start_proof = chrono::high_resolution_clock::now();
+        start_proof = std::chrono::high_resolution_clock::now();
         op0 = proof.EvaluatePolyPs(random);
         op1 = proof.EvaluatePolyQs(random);
-        end_proof = chrono::high_resolution_clock::now();
-        time_taken_proof += chrono::duration_cast<chrono::nanoseconds>(end_proof - start_proof).count();
+        end_proof = std::chrono::high_resolution_clock::now();
+        time_taken_proof += std::chrono::duration_cast<std::chrono::nanoseconds>(end_proof - start_proof).count();
 
         ++nRounds;
         totalProofSize += proof.GetBytes();
         totalQueryComplexity += 2;
     }
 
-    auto start_proof = chrono::high_resolution_clock::now();
-    Proof proof = InnerProductCircuit::MakeCoefficientProof(op0.data(), op1.data(), op0.size(), 1);
-    auto end_proof = chrono::high_resolution_clock::now();
-    time_taken_proof += chrono::duration_cast<chrono::nanoseconds>(end_proof - start_proof).count();
+    auto start_proof = std::chrono::high_resolution_clock::now();
+    Proof<Int> proof = InnerProductCircuit<Int>::MakeCoefficientProof(op0.data(), op1.data(), op0.size(), 1);
+    auto end_proof = std::chrono::high_resolution_clock::now();
+    time_taken_proof += std::chrono::duration_cast<std::chrono::nanoseconds>(end_proof - start_proof).count();
 
-    auto start_query = chrono::high_resolution_clock::now();
-    std::vector<Query> queries = InnerProductCircuit::MakeCoefficientQuery(Mpint32::GenerateRandom(), op0.size(), 1);
+    auto start_query = std::chrono::high_resolution_clock::now();
+    std::vector<Query<Int>> queries =
+        InnerProductCircuit<Int>::MakeCoefficientQuery(Int::GenerateRandom(), op0.size(), 1);
     isValid =
         isValid &&
         (proof.GetQueryAnswer(queries[0]) * proof.GetQueryAnswer(queries[1]) == proof.GetQueryAnswer(queries[2])) &&
         (proof.GetQueryAnswer(queries[3]) == out);
-    auto end_query = chrono::high_resolution_clock::now();
-    time_taken_query += chrono::duration_cast<chrono::nanoseconds>(end_query - start_query).count();
+    auto end_query = std::chrono::high_resolution_clock::now();
+    time_taken_query += std::chrono::duration_cast<std::chrono::nanoseconds>(end_query - start_query).count();
 
     ++nRounds;
     totalProofSize += proof.GetBytes();
@@ -533,13 +557,13 @@ FLPCPMeasurement TwoPC::FLIOPCoefficient(const size_t inputLength, const size_t 
                             isValid);
 }
 
-void TwoPC::ExperimentFLIOPCoefficient()
+template <typename Int> void TwoPC<Int>::ExperimentFLIOPCoefficient()
 {
     size_t j = 0;
     FLPCPMeasurement measures[10];
     for (size_t i = 4; i <= pow(4, 10); i *= 4)
     {
-        measures[j] = TwoPC::FLIOPCoefficient(i, 2);
+        measures[j] = TwoPC<Int>::FLIOPCoefficient(i, 2);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;
@@ -582,3 +606,5 @@ void TwoPC::ExperimentFLIOPCoefficient()
     }
     std::cout << std::endl;
 }
+
+#endif

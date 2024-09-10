@@ -1,4 +1,6 @@
-#include "mpint64.h"
+#include <cassert>
+
+#include "mpint64.hpp"
 
 /* Initialize static members */
 uint32_t Mpint64::sSeed = 0u;
@@ -41,6 +43,28 @@ void Mpint64::SetSeed(uint32_t seed)
 Mpint64 Mpint64::GenerateRandom()
 {
     return Mpint64(sDistribution(sRandomGenerator));
+}
+
+Mpint64 Mpint64::GenerateRandomAbove(uint64_t min)
+{
+    sDistribution = std::uniform_int_distribution<uint64_t>(min, Mpint64::BASE - 1u);
+    return Mpint64(sDistribution(sRandomGenerator));
+}
+
+void Mpint64::Reverse(Mpint64* begin, Mpint64* end)
+{
+    const size_t length = (end - begin + 1) / 2;
+
+    assert(length > 0);
+
+    for (size_t i = 0; i < length; ++i)
+    {
+        Mpint64 temp = *begin;
+        *begin = *end;
+        *end = temp;
+        ++begin;
+        --end;
+    }
 }
 
 Mpint64 Mpint64::Invert() const

@@ -1,19 +1,9 @@
-﻿#include <iostream>
-#include <iomanip>
-#include <stdexcept>
-#include <string>
-#include <utility>
-#include <random>
-#include <chrono>
-#include <cassert>
-
-#include "experiments\performance_measurement.h"
-#include "experiments\two_party_computation.h"
-#include "experiments\three_party_computation.h"
+﻿#include "math\mpint64.hpp"
+#include "experiments\three_party_computation.hpp"
 
 int main(int argc, char* argv[])
 {
-    TwoPC::ExperimentFLIOPCoefficient();
+    ThreePC<Mpint64>::FindBestFLIOPCoefficientSchedule(1024, 32);
     system("pause");
     return 0;
 }

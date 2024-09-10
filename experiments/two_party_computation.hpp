@@ -4,8 +4,9 @@
 #include <chrono>
 #include <iostream>
 
-#include "../unit/proof.hpp"
 #include "../circuit/inner_product_circuit.hpp"
+#include "../math/square_matrix.hpp"
+#include "../unit/proof.hpp"
 
 struct FLPCPMeasurement
 {
@@ -20,7 +21,9 @@ template <typename Int> class TwoPC
 {
 public:
     static FLPCPMeasurement FLPCP(size_t inputLength, size_t nGGate);
+    static FLPCPMeasurement FLPCPWithPrecompute(size_t inputLength, size_t nGGate);
     static void ExperimentFLPCP();
+    static void ExperimentFLPCPWithPrecompute();
     static void ExperimentFLPCPSqrt();
     static FLPCPMeasurement FLPCPCoefficient(size_t inputLength, size_t nGGate);
     static void ExperimentFLPCPCoefficient();
@@ -47,7 +50,7 @@ template <typename Int> FLPCPMeasurement TwoPC<Int>::FLPCP(size_t inputLength, s
         op1[i] = Int::GenerateRandom();
     }
 
-    const Int trueResult = InnerProductCircuit<Int>::Forward(op0, op1, inputLength);
+    const Int circuitOutput = InnerProductCircuit<Int>::Forward(op0, op1, inputLength);
 
     // Prover make proof vector : (inputs || constant terms || coefficients)
     auto start_proof = std::chrono::high_resolution_clock::now();
@@ -69,7 +72,69 @@ template <typename Int> FLPCPMeasurement TwoPC<Int>::FLPCP(size_t inputLength, s
     }
 
     bool isValid = (proof.GetQueryAnswer(queries[queries.size() - 2u]) == gR) &&
-                   (proof.GetQueryAnswer(queries[queries.size() - 1u]) == trueResult);
+                   (proof.GetQueryAnswer(queries[queries.size() - 1u]) == circuitOutput);
+
+    auto end_query = std::chrono::high_resolution_clock::now();
+    double time_taken_query = std::chrono::duration_cast<std::chrono::nanoseconds>(end_query - start_query).count();
+
+    delete[] op0;
+    delete[] op1;
+
+    return FLPCPMeasurement(proof.GetBytes(), queries.size(), time_taken_proof * 1e-6, time_taken_query * 1e-6,
+                            isValid);
+}
+
+template <typename Int> FLPCPMeasurement TwoPC<Int>::FLPCPWithPrecompute(size_t inputLength, size_t nGGate)
+{
+    Int::SetSeed(10);
+
+    Int* const op0 = new Int[inputLength];
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
+
+    Int* const op1 = new Int[inputLength];
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
+
+    const Int circuitOutput = InnerProductCircuit<Int>::Forward(op0, op1, inputLength);
+
+    // Precompute a Vandermonde matrix for interpolation
+    Int* xs = new Int[nGGate + 1];
+    for (size_t i = 0; i < nGGate + 1; ++i)
+    {
+        xs[i] = Int(i);
+    }
+    SquareMatrix<Int> evalToCoeff = SquareMatrix<Int>::GetVandermonde(xs, nGGate + 1);
+    evalToCoeff.Inverse();
+    delete[] xs;
+    xs = (Int*)0;
+
+    // Precompute a process to make linear queries
+    std::vector<Query<Int>> queries =
+        InnerProductCircuit<Int>::MakeQuery(Int::GenerateRandomAbove(nGGate + 1), nGGate, inputLength);
+    const size_t nInputQueriesHalf = (queries.size() - 2u) / 2u;
+
+    // Prover make proof vector : (inputs || constant terms || coefficients)
+    auto start_proof = std::chrono::high_resolution_clock::now();
+    Proof<Int> proof = InnerProductCircuit<Int>::MakeProofWithPrecompute(op0, op1, inputLength, nGGate, evalToCoeff);
+    auto end_proof = std::chrono::high_resolution_clock::now();
+    double time_taken_proof = std::chrono::duration_cast<std::chrono::nanoseconds>(end_proof - start_proof).count();
+
+    // Verifier make queries and perform inner products between proof and queries.
+    // Assumption : Verifier only has linear access on proof vector.
+    auto start_query = std::chrono::high_resolution_clock::now();
+    Int gR(0u);
+    for (size_t i = 0; i < nInputQueriesHalf; ++i)
+    {
+        gR += proof.GetQueryAnswer(queries[i]) * proof.GetQueryAnswer(queries[i + nInputQueriesHalf]);
+    }
+
+    bool isValid = (proof.GetQueryAnswer(queries[queries.size() - 2u]) == gR) &&
+                   (proof.GetQueryAnswer(queries[queries.size() - 1u]) == circuitOutput);
 
     auto end_query = std::chrono::high_resolution_clock::now();
     double time_taken_query = std::chrono::duration_cast<std::chrono::nanoseconds>(end_query - start_query).count();
@@ -88,6 +153,63 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCP()
     for (size_t i = 1; i <= 10; ++i)
     {
         measures[j] = TwoPC<Int>::FLPCP(i * i * 10, i * i * 10);
+        if (!measures[j++].isVaild)
+        {
+            std::cout << "Invalid!" << std::endl;
+            return;
+        }
+    }
+
+    std::cout << "Vector Length : ";
+    for (size_t i = 1; i <= 10; ++i)
+    {
+        std::cout << i * i * 10 << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "# of G-gates : ";
+    for (size_t i = 1; i <= 10; ++i)
+    {
+        std::cout << i * i * 10 << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Proof Length : ";
+    for (size_t i = 0; i < 10; ++i)
+    {
+        std::cout << measures[i].proofLength << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Query Complexity : ";
+    for (size_t i = 0; i < 10; ++i)
+    {
+        std::cout << measures[i].nQueries << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Prover Time : ";
+    for (size_t i = 0; i < 10; ++i)
+    {
+        std::cout << std::fixed << measures[i].proverTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Verifier Time : ";
+    for (size_t i = 0; i < 10; ++i)
+    {
+        std::cout << std::fixed << measures[i].verifierTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+}
+
+template <typename Int> void TwoPC<Int>::ExperimentFLPCPWithPrecompute()
+{
+    size_t j = 0;
+    FLPCPMeasurement measures[10];
+    for (size_t i = 1; i <= 10; ++i)
+    {
+        measures[j] = TwoPC<Int>::FLPCPWithPrecompute(i * i * 10, i * i * 10);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;

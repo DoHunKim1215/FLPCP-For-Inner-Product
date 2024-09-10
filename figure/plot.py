@@ -9,8 +9,8 @@ class FLPCP:
         fig, ax = plt.subplots(figsize=(5, 4))
 
         xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        proof_lengths = [92, 332, 732, 1292, 2012, 2892, 3932, 5132, 6492, 8012]
-        predictions = [8 * x + 12 for x in xs]
+        proof_lengths = [184, 664, 1464, 2584, 4024, 5784, 7864, 10264, 12984, 16024]
+        predictions = [16 * x + 24 for x in xs]
 
         ax.plot(xs, proof_lengths, color='red', marker='o', label='measurement')
         ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN$')
@@ -45,14 +45,22 @@ class FLPCP:
         fig, ax = plt.subplots(figsize=(5, 4))
 
         xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        ys = [0.021200, 0.649100000, 6.876100000, 37.580900000, 141.064100000, 418.446700000, 1050.498000000, 2333.715100000, 4724.683200000, 9061.323000000]
-        predictions = [0.000009061 * math.pow(x, 3) for x in xs]
+        ys = [0.029500, 0.794100000, 8.880600000, 46.639700000, 172.233300000, 517.479600000, 1293.393600000, 2887.757200000, 5854.662300000, 11004.468700000]
+        poly_a = np.polyfit([x * x * x for x in xs], ys, 1)
+        predictions = [poly_a[0] * math.pow(x, 3) + 0.029500 - poly_a[0] * math.pow(10, 3) for x in xs]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
+        ys_precompute = [0.004200, 0.021600000, 0.110100000, 0.298200000, 0.708700000, 1.521100000, 2.735500000, 4.602400000, 7.342800000, 11.389000000]
+        poly_b = np.polyfit([x * x for x in xs], ys_precompute, 1)
+        predictions_precompute = [poly_b[0] * math.pow(x, 2) + 0.004200 - poly_b[0] * math.pow(10, 2) for x in xs]
+
+        ax.plot(xs, ys, color='red', marker='o', label='Without precomputation')
         ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN^3$')
+        ax.plot(xs, ys_precompute, color='green', marker='s', label='With precomputation')
+        ax.plot(xs, predictions_precompute, color='magenta', marker='v', linestyle='--', label=r'$cN^2$')
 
         plt.xlabel(r'Input vector length ($\times 10$)')
         plt.ylabel('Prover time (ms)')
+        plt.yscale('log')
         plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
         plt.tight_layout()
         plt.legend()
@@ -64,14 +72,22 @@ class FLPCP:
         fig, ax = plt.subplots(figsize=(5, 4))
 
         xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        ys = [0.015600000, 0.193700000, 0.937400000, 2.938900000, 7.133200000, 14.717300000, 27.212000000, 46.365500000, 74.206300000, 114.775100000]
-        predictions = [0.000114 * x * x for x in xs]
+        ys = [0.039700000, 0.531700000, 2.587500000, 8.167200000, 19.783400000, 40.911600000, 75.624400000, 128.840000000, 206.251800000, 314.377600000]
+        poly_a = np.polyfit(xs, ys, 2)
+        predictions = [poly_a[0] * x * x + poly_a[1] * x + poly_a[2] for x in xs]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
+        ys_precompute = [0.000900000, 0.002400000, 0.005100000, 0.009000000, 0.014000000, 0.020200000, 0.027400000, 0.035600000, 0.045100000, 0.055900000]
+        poly_b = np.polyfit(xs, ys_precompute, 1)
+        predictions_precompute = [poly_b[0] * x + poly_b[1] for x in xs]
+
+        ax.plot(xs, ys, color='red', marker='o', label='Without precomputation')
         ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN^2$')
+        ax.plot(xs, ys_precompute, color='green', marker='s', label='With precomputation')
+        ax.plot(xs, predictions_precompute, color='magenta', marker='v', linestyle='--', label=r'$cN$')
 
         plt.xlabel(r'Input vector length ($\times 10$)')
         plt.ylabel('Verifier time (ms)')
+        plt.yscale('log')
         plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
         plt.tight_layout()
         plt.legend()
@@ -669,6 +685,7 @@ if __name__ == '__main__':
     FLPCP.flpcp_prover_time()
     FLPCP.flpcp_verifier_time()
 
+def a():
     # FLPCPCoeff
     FLPCPCoeff.flpcp_proof_size()
     FLPCPCoeff.flpcp_query_complexity()

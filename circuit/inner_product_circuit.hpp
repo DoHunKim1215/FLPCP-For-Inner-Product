@@ -4,8 +4,9 @@
 #include <cassert>
 #include <cmath>
 
-#include "..\unit\interactive_proof.hpp"
 #include "..\math\polynomial.hpp"
+#include "..\math\square_matrix.hpp"
+#include "..\unit\interactive_proof.hpp"
 #include "..\unit\proof.hpp"
 #include "..\unit\query.hpp"
 
@@ -14,6 +15,8 @@ template <typename Int> class InnerProductCircuit
 public:
     static Int Forward(Int* op0, Int* op1, const size_t length);
     static Proof<Int> MakeProof(Int* op0, Int* op1, const size_t length, const size_t nGGate);
+    static Proof<Int> MakeProofWithPrecompute(Int* op0, Int* op1, const size_t length, const size_t nGGate,
+                                              SquareMatrix<Int>& evalToCoeff);
     static std::vector<Query<Int>> MakeQuery(Int random, const size_t nGGate, const size_t inputSize);
     static Proof<Int> MakeCoefficientProof(Int* op0, Int* op1, const size_t length, const size_t nPoly);
     static std::vector<Query<Int>> MakeCoefficientQuery(Int random, size_t inputSize, const size_t nPoly);
@@ -44,14 +47,11 @@ Proof<Int> InnerProductCircuit<Int>::MakeProof(Int* op0, Int* op1, const size_t 
     assert(1 <= nGGate && nGGate <= length);
 
     const size_t nGGateInputHalf = (size_t)ceil(length / (double)nGGate);
+    const size_t nGGateInput = nGGateInputHalf * 2;
+    const size_t nPointsByOnePoly = nGGate + 1;
 
-    assert((size_t)(length / (double)nGGate) != nGGateInputHalf);
-
-    const size_t nGGateInput = nGGateInputHalf * 2u;
-    const size_t nPointsByOnePoly = nGGate + 1u;
-
-    Int* randoms = new Int[nGGateInput];
-    Int* points = new Int[nGGateInput * nPointsByOnePoly];
+    Int* const randoms = new Int[nGGateInput];
+    Int* const points = new Int[nGGateInput * nPointsByOnePoly];
     std::memset(points, 0, (nGGateInput * nPointsByOnePoly) * sizeof(Int));
     for (size_t i = 0; i < nGGateInput; ++i)
     {
@@ -88,36 +88,83 @@ Proof<Int> InnerProductCircuit<Int>::MakeProof(Int* op0, Int* op1, const size_t 
 }
 
 template <typename Int>
+Proof<Int> InnerProductCircuit<Int>::MakeProofWithPrecompute(Int* op0, Int* op1, const size_t length, const size_t nGGate, SquareMatrix<Int>& evalToCoeff)
+{
+    assert(length > 0);
+    assert(1 <= nGGate && nGGate <= length);
+
+    const size_t nGGateInputHalf = (size_t)ceil(length / (double)nGGate);
+    const size_t nGGateInput = nGGateInputHalf * 2;
+    const size_t nPointsByOnePoly = nGGate + 1;
+
+    Int* const randoms = new Int[nGGateInput];
+    Int* const points = new Int[nGGateInput * nPointsByOnePoly];
+    std::memset(points, 0, (nGGateInput * nPointsByOnePoly) * sizeof(Int));
+    for (size_t i = 0; i < nGGateInput; ++i)
+    {
+        randoms[i] = Int::GenerateRandom();
+        points[i * nPointsByOnePoly] = randoms[i];
+    }
+    for (size_t i = 0; i < length; ++i)
+    {
+        const size_t gateNumber = i / nGGateInputHalf + 1u;
+        const size_t inputNumber = i % nGGateInputHalf;
+        points[gateNumber + inputNumber * nPointsByOnePoly] = op0[i];
+        points[gateNumber + (inputNumber + nGGateInputHalf) * nPointsByOnePoly] = op1[i];
+    }
+
+    Polynomial<Int>* polys = new Polynomial<Int>[nGGateInput];
+    for (size_t i = 0; i < nGGateInput; ++i)
+    {
+        polys[i] =
+            Polynomial<Int>::VandermondeInterpolation(points + i * nPointsByOnePoly, nPointsByOnePoly, evalToCoeff);
+    }
+
+    Polynomial<Int> gPoly;
+    for (size_t i = 0; i < nGGateInputHalf; ++i)
+    {
+        gPoly += polys[i] * polys[i + nGGateInputHalf];
+    }
+
+    Proof<Int> proof(op0, op1, length, randoms, nGGateInput, gPoly);
+
+    delete[] polys;
+    delete[] points;
+    delete[] randoms;
+
+    return proof;
+}
+
+template <typename Int>
 std::vector<Query<Int>> InnerProductCircuit<Int>::MakeQuery(Int random, const size_t nGGate, const size_t inputSize)
 {
     assert(inputSize > 0);
 
     const size_t nGGateInputHalf = (size_t)ceil(inputSize / (double)nGGate);
+    const size_t nGGateInput = nGGateInputHalf * 2;
+    const size_t nCoefficients = nGGate * 2 + 1;
 
-    assert((size_t)(inputSize / (double)nGGate) != nGGateInputHalf);
-
-    const size_t nGGateInput = nGGateInputHalf * 2u;
-    const size_t nCoefficients = nGGate * 2u + 1u;
-
-    std::vector<Int> interpCoeff(nGGate + 1u);
-    for (size_t i = 0; i < nGGate + 1u; i++)
+    // Get coefficients of interpolation for the evaluation at r
+    std::vector<Int> interpolationCoefficients(nGGate + 1);
+    for (size_t i = 0; i < nGGate + 1; i++)
     {
-        Int term(1u);
-        for (int j = 0; j < nGGate + 1u; j++)
+        Int term(1);
+        for (int j = 0; j < nGGate + 1; j++)
         {
             if (j != i)
             {
                 term *= (random - Int(j)) * (Int(i) - Int(j)).Invert();
             }
         }
-        interpCoeff[i] = term;
+        interpolationCoefficients[i] = term;
     }
 
-    const size_t queryLength = inputSize + inputSize + nGGateInput + nCoefficients;
-    const size_t nQuery = nGGateInput + 2u;
+    const size_t queryLength = inputSize * 2 + nGGateInput + nCoefficients;
+    const size_t nQuery = nGGateInput + 2;
     Int* const queries = new Int[queryLength * nQuery];
     std::memset(queries, 0, (queryLength * nQuery) * sizeof(Int));
 
+    // Construct the queries to get the inputs of G-gate
     Int* queriesCurr = queries;
     for (size_t i = 0; i < nGGateInput; ++i)
     {
@@ -125,7 +172,7 @@ std::vector<Query<Int>> InnerProductCircuit<Int>::MakeQuery(Int random, const si
         {
             if (j % nGGateInputHalf == i)
             {
-                *queriesCurr = interpCoeff[j / nGGateInputHalf + 1u];
+                *queriesCurr = interpolationCoefficients[j / nGGateInputHalf + 1u];
             }
             ++queriesCurr;
         }
@@ -133,16 +180,17 @@ std::vector<Query<Int>> InnerProductCircuit<Int>::MakeQuery(Int random, const si
         {
             if (j % nGGateInputHalf + nGGateInputHalf == i)
             {
-                *queriesCurr = interpCoeff[j / nGGateInputHalf + 1u];
+                *queriesCurr = interpolationCoefficients[j / nGGateInputHalf + 1u];
             }
             ++queriesCurr;
         }
         queriesCurr += i;
-        *queriesCurr = interpCoeff[0];
+        *queriesCurr = interpolationCoefficients[0];
         queriesCurr += nGGateInput + nCoefficients - i;
     }
 
-    queriesCurr += inputSize + inputSize + nGGateInput;
+    // Construct the queries to get the evaluation of the proof polynomial at r
+    queriesCurr += inputSize * 2 + nGGateInput;
     Int power(1u);
     for (size_t j = 0; j < nCoefficients; ++j)
     {
@@ -157,7 +205,8 @@ std::vector<Query<Int>> InnerProductCircuit<Int>::MakeQuery(Int random, const si
         powers[j] = Int(1u);
     }
 
-    queriesCurr += inputSize + inputSize + nGGateInput;
+    // Construct the queries to get the circuit output
+    queriesCurr += inputSize * 2 + nGGateInput;
     *queriesCurr = nGGate;
     ++queriesCurr;
     for (size_t i = 1; i < nCoefficients; ++i)
@@ -176,7 +225,6 @@ std::vector<Query<Int>> InnerProductCircuit<Int>::MakeQuery(Int random, const si
     powers = (Int*)0;
 
     std::vector<Query<Int>> queryVectors(nQuery);
-
     for (size_t i = 0; i < nQuery; ++i)
     {
         queryVectors[i] = Query(queries + i * queryLength, queryLength);

@@ -6,6 +6,8 @@
 #include <cstring>
 #include <iostream>
 
+#include "../math/square_matrix.hpp"
+
 template <typename Int> class Proof;
 
 template <typename Int> class Polynomial
@@ -21,7 +23,8 @@ public:
 
     Int Evaluate(const Int x) const;
 
-    static Polynomial LagrangeInterpolation(Int* points, const size_t nPoints);
+    static Polynomial<Int> LagrangeInterpolation(Int* points, const size_t nPoints);
+    static Polynomial<Int> VandermondeInterpolation(Int* points, const size_t nPoints, SquareMatrix<Int>& evalToCoeff);
 
     Polynomial<Int>& operator=(const Polynomial<Int>& op);
     Polynomial<Int> operator+(const Polynomial<Int>& op);
@@ -134,6 +137,23 @@ template <typename Int> Polynomial<Int> Polynomial<Int>::LagrangeInterpolation(I
     delete[] tempCoefficients;
 
     return Polynomial(coefficients, nPoints);
+}
+
+template <typename Int>
+Polynomial<Int> Polynomial<Int>::VandermondeInterpolation(Int* points, const size_t nPoints,
+                                                          SquareMatrix<Int>& evalToCoeff)
+{
+    Int* const coefficients = new Int[nPoints];
+    std::memset(coefficients, 0, nPoints * sizeof(Int));
+    for (size_t i = 0; i < nPoints; ++i)
+    {
+        for (size_t j = 0; j < nPoints; ++j)
+        {
+            coefficients[i] += points[j] * evalToCoeff.Get(i, j);
+        }
+    }
+
+    return Polynomial<Int>(coefficients, nPoints);
 }
 
 template <typename Int> Polynomial<Int>& Polynomial<Int>::operator=(const Polynomial<Int>& op)

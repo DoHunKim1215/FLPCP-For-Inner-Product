@@ -21,25 +21,26 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 
 ### FLPCP Complexity (Baseline)
 
-- Proof Size: $O(N)$
-    
-    ![FLPCP_PROOF_SIZE_ORG.png](./figure/FLPCP/FLPCP_PROOF_SIZE_ORG.png)
-    
-
-- Query Complexity: $O(1)$
-    
-    ![FLPCP_QUERY_COMPLEXITY_ORG.png](./figure/FLPCP/FLPCP_QUERY_COMPLEXITY_ORG.png)
-    
-
-- Prover Time: $O(N^3)$
-    
-    ![FLPCP_PROVER_TIME_ORG.png](./figure/FLPCP/FLPCP_PROVER_TIME_ORG.png)
-    
-
-- Verifier Time: $O(N^2)$
-    
-    ![FLPCP_VERIFIER_TIME_ORG.png](./figure/FLPCP/FLPCP_VERIFIER_TIME_ORG.png)
-    
+<div align="center">
+  <table>
+    <tr>
+      <th> Proof Size: $O(N)$ </th>
+      <th> Query Complexity: $O(1)$ </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLPCP/FLPCP_PROOF_SIZE_ORG.png" /> </td>
+      <td> <img src="./figure/FLPCP/FLPCP_QUERY_COMPLEXITY_ORG.png" /> </td>
+    </tr>
+    <tr>
+      <th> Prover Time: $O(N^3)$ </th>
+      <th> Verifier Time: $O(N^2)$ </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLPCP/FLPCP_PROVER_TIME_ORG.png" /> </td>
+      <td> <img src="./figure/FLPCP/FLPCP_VERIFIER_TIME_ORG.png" /> </td>
+    </tr>
+  </table>
+</div>
 
 ### FLPCP Coeff. Complexity (Baseline)
 

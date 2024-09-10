@@ -1,9 +1,9 @@
 ﻿#include "math\mpint64.hpp"
-#include "experiments\three_party_computation.hpp"
+#include "experiments\two_party_computation.hpp"
 
 int main(int argc, char* argv[])
 {
-    ThreePC<Mpint64>::FindBestFLIOPCoefficientSchedule(1024, 32);
+    TwoPC<Mpint64>::ExperimentFLPCPWithPrecompute();
     system("pause");
     return 0;
 }

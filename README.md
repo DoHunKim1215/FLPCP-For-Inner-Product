@@ -14,12 +14,14 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 * `unit` - class representing proof and query.
 * `win-x64-release` - complied executable files for x64 windows environment.
 
-## Experiment Results
+## Experiment Environment
 
 * CPU: AMD Ryzen 9 7950X 16-Core Processor @ 5.00 GHz (Only used a single core)
 * Memory: DDR5 32GB x2
 
-### FLPCP Complexity (Baseline)
+## FLPCP Complexity over $\mathbb Z_{2^{61}-1}$
+
+### Baseline
 
 <div align="center">
   <table>
@@ -28,111 +30,113 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
       <th> Query Complexity: $O(1)$ </th>
     </tr>
     <tr>
-      <td> <img src="./figure/FLPCP/FLPCP_PROOF_SIZE_ORG.png" /> </td>
-      <td> <img src="./figure/FLPCP/FLPCP_QUERY_COMPLEXITY_ORG.png" /> </td>
+      <td> <img src="./figure/FLPCP/proof_size.png" /> </td>
+      <td> <img src="./figure/FLPCP/query_complexity.png" /> </td>
     </tr>
     <tr>
       <th> Prover Time: $O(N^3)$ </th>
       <th> Verifier Time: $O(N^2)$ </th>
     </tr>
     <tr>
-      <td> <img src="./figure/FLPCP/FLPCP_PROVER_TIME_ORG.png" /> </td>
-      <td> <img src="./figure/FLPCP/FLPCP_VERIFIER_TIME_ORG.png" /> </td>
+      <td> <img src="./figure/FLPCP/prover_time.png" /> </td>
+      <td> <img src="./figure/FLPCP/verifier_time.png" /> </td>
     </tr>
   </table>
 </div>
 
-### FLPCP Coeff. Complexity (Baseline)
+### Coefficient Baseline
 
-- Proof Size: $O(N)$
-    
-    ![FLPCP_COEFF_PROOF_SIZE_ORG.png](./figure/FLPCP%20Coefficient/FLPCP_COEFF_PROOF_SIZE_ORG.png)
-    
+<div align="center">
+  <table>
+    <tr>
+      <th> Proof Size: $O(N)$ </th>
+      <th> Query Complexity: $O(1)$ </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLPCP%20Coefficient/proof_size.png" /> </td>
+      <td> <img src="./figure/FLPCP%20Coefficient/query_complexity.png" /> </td>
+    </tr>
+    <tr>
+      <th> Prover Time: $O(N^2)$ </th>
+      <th> Verifier Time: $O(N)$ </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLPCP%20Coefficient/prover_time.png" /> </td>
+      <td> <img src="./figure/FLPCP%20Coefficient/verifier_time.png" /> </td>
+    </tr>
+  </table>
+</div>
 
-- Query Complexity: $O(1)$
-    
-    ![FLPCP_COEFF_QUERY_COMPLEXITY_ORG.png](./figure/FLPCP%20Coefficient/FLPCP_COEFF_QUERY_COMPLEXITY_ORG.png)
-    
+### $\sqrt{N}$ Optimized version
 
-- Prover Time: $O(N^2)$
-    
-    ![FLPCP_COEFF_PROVER_TIME_ORG.png](./figure/FLPCP%20Coefficient/FLPCP_COEFF_PROVER_TIME_ORG.png)
-    
+<div align="center">
+  <table>
+    <tr>
+      <th> Proof Size: $O(\sqrt{N})$ </th>
+      <th> Query Complexity: $O(\sqrt{N})$ </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLPCP%20Sqrt/proof_size.png" /> </td>
+      <td> <img src="./figure/FLPCP%20Sqrt/query_complexity.png" /> </td>
+    </tr>
+    <tr>
+      <th> Prover Time: $O(N^2)$ </th>
+      <th> Verifier Time: $O(N\sqrt{N})$ </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLPCP%20Sqrt/prover_time.png" /> </td>
+      <td> <img src="./figure/FLPCP%20Sqrt/verifier_time.png" /> </td>
+    </tr>
+  </table>
+</div>
 
-- Verifier Time: $O(N)$
-    
-    ![FLPCP_COEFF_VERIFIER_TIME_ORG.png](./figure/FLPCP%20Coefficient/FLPCP_COEFF_VERIFIER_TIME_ORG.png)
-    
+### Coefficient + $\sqrt{N}$ Optimized version
 
-### Compare FLPCP (Baseline)
+<div align="center">
+  <table>
+    <tr>
+      <th> Proof Size: $O(\sqrt{N})$ </th>
+      <th> Query Complexity: $O(\sqrt{N})$ </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLPCP%20Sqrt%20Coefficient/proof_size.png" /> </td>
+      <td> <img src="./figure/FLPCP%20Sqrt%20Coefficient/query_complexity.png" /> </td>
+    </tr>
+    <tr>
+      <th> Prover Time: $O(N\sqrt{N})$ </th>
+      <th> Verifier Time: $O(N\sqrt{N})$ </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLPCP%20Sqrt%20Coefficient/prover_time.png" /> </td>
+      <td> <img src="./figure/FLPCP%20Sqrt%20Coefficient/verifier_time.png" /> </td>
+    </tr>
+  </table>
+</div>
 
-- Prover Time
-    
-    ![COMPARE_PROVER_TIME_FLPCP.png](./figure/FLPCP%20Coefficient/COMPARE_PROVER_TIME_FLPCP.png)
-    
+### Comparison
 
-- Verifier Time
-    
-    ![COMPARE_VERIFIER_TIME_FLPCP.png](./figure/FLPCP%20Coefficient/COMPARE_VERIFIER_TIME_FLPCP.png)
-    
+<div align="center">
+  <table>
+    <tr>
+      <th> Proof Size </th>
+      <th> Query Complexity </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLPCP%20Comparison/proof_size.png" /> </td>
+      <td> <img src="./figure/FLPCP%20Comparison/query_complexity.png" /> </td>
+    </tr>
+    <tr>
+      <th> Prover Time </th>
+      <th> Verifier Time </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLPCP%20Comparison/prover_time.png" /> </td>
+      <td> <img src="./figure/FLPCP%20Comparison/verifier_time.png" /> </td>
+    </tr>
+  </table>
+</div>
 
-### FLPCP Complexity ($\sqrt{N}$ Optimization)
-
-- Proof Size: $O(\sqrt{N})$
-    
-    ![FLPCP_PROOF_SIZE.png](./figure/FLPCP%20Sqrt/FLPCP_PROOF_SIZE.png)
-    
-
-- Query Complexity: $O(\sqrt{N})$
-    
-    ![FLPCP_QUERY_COMPLEXITY.png](./figure/FLPCP%20Sqrt/FLPCP_QUERY_COMPLEXITY.png)
-    
-
-- Prover Time: $O(N^2)$
-    
-    ![FLPCP_PROVER_TIME.png](./figure/FLPCP%20Sqrt/FLPCP_PROVER_TIME.png)
-    
-
-- Verifier Time: $O(N\sqrt{N})$
-    
-    ![FLPCP_VERIFIER_TIME.png](./figure/FLPCP%20Sqrt/FLPCP_VERIFIER_TIME.png)
-    
-
-### FLPCP Coeff. Complexity ($\sqrt{N}$ Optimization)
-
-- Proof Size: $O(\sqrt{N})$
-    
-    ![FLPCP_COEFF_PROOF_SIZE.png](./figure/FLPCP%20Sqrt%20Coefficient/FLPCP_COEFF_PROOF_SIZE.png)
-    
-
-- Query Complexity: $O(\sqrt{N})$
-    
-    ![FLPCP_COEFF_QUERY_COMPLEXITY.png](./figure/FLPCP%20Sqrt%20Coefficient/FLPCP_COEFF_QUERY_COMPLEXITY.png)
-    
-
-- Prover Time: $O(N\sqrt{N})$
-    
-    ![FLPCP_COEFF_PROVER_TIME.png](./figure/FLPCP%20Sqrt%20Coefficient/FLPCP_COEFF_PROVER_TIME.png)
-    
-
-- Verifier Time: $O(N\sqrt{N})$
-    
-    ![FLPCP_COEFF_VERIFIER_TIME.png](./figure/FLPCP%20Sqrt%20Coefficient/FLPCP_COEFF_VERIFIER_TIME.png)
-    
-
-### Compare FLPCP ($\sqrt{N}$ Optimization)
-
-- Prover Time
-    
-    ![COMPARE_PROVER_TIME_FLPCP_SQRT.png](./figure/FLPCP%20Sqrt%20Coefficient/COMPARE_PROVER_TIME_FLPCP_SQRT.png)
-    
-
-- Verifier Time
-    
-    ![COMPARE_VERIFIER_TIME_FLPCP_SQRT.png](./figure/FLPCP%20Sqrt%20Coefficient/COMPARE_VERIFIER_TIME_FLPCP_SQRT.png)
-    
-
-### FLIOP Complexity
+## FLIOP Complexity over $\mathbb Z_{2^{61}-1}$
 
 - Proof Size: $O(\log_2{N})$
     

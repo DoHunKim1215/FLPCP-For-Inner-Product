@@ -25,6 +25,7 @@ public:
     static void ExperimentFLPCP();
     static void ExperimentFLPCPWithPrecompute();
     static void ExperimentFLPCPSqrt();
+    static void ExperimentFLPCPSqrtWithPrecompute();
     static FLPCPMeasurement FLPCPCoefficient(size_t inputLength, size_t nGGate);
     static void ExperimentFLPCPCoefficient();
     static void ExperimentFLPCPCoefficientSqrt();
@@ -149,10 +150,10 @@ template <typename Int> FLPCPMeasurement TwoPC<Int>::FLPCPWithPrecompute(size_t 
 template <typename Int> void TwoPC<Int>::ExperimentFLPCP()
 {
     size_t j = 0;
-    FLPCPMeasurement measures[10];
-    for (size_t i = 1; i <= 10; ++i)
+    FLPCPMeasurement measures[11];
+    for (size_t i = 4; i <= 4096; i *= 2)
     {
-        measures[j] = TwoPC<Int>::FLPCP(i * i * 10, i * i * 10);
+        measures[j] = TwoPC<Int>::FLPCP(i, i);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;
@@ -161,42 +162,42 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCP()
     }
 
     std::cout << "Vector Length : ";
-    for (size_t i = 1; i <= 10; ++i)
+    for (size_t i = 4; i <= 4096; i *= 2)
     {
-        std::cout << i * i * 10 << ", ";
+        std::cout << i << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "# of G-gates : ";
-    for (size_t i = 1; i <= 10; ++i)
+    for (size_t i = 4; i <= 4096; i *= 2)
     {
-        std::cout << i * i * 10 << ", ";
+        std::cout << i << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Proof Length : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << measures[i].proofLength << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Query Complexity : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << measures[i].nQueries << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Prover Time : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << std::fixed << measures[i].proverTime << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Verifier Time : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << std::fixed << measures[i].verifierTime << std::setprecision(9) << ", ";
     }
@@ -206,10 +207,10 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCP()
 template <typename Int> void TwoPC<Int>::ExperimentFLPCPWithPrecompute()
 {
     size_t j = 0;
-    FLPCPMeasurement measures[10];
-    for (size_t i = 1; i <= 10; ++i)
+    FLPCPMeasurement measures[11];
+    for (size_t i = 4; i <= 4096; i *= 2)
     {
-        measures[j] = TwoPC<Int>::FLPCPWithPrecompute(i * i * 10, i * i * 10);
+        measures[j] = TwoPC<Int>::FLPCPWithPrecompute(i, i);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;
@@ -218,42 +219,42 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCPWithPrecompute()
     }
 
     std::cout << "Vector Length : ";
-    for (size_t i = 1; i <= 10; ++i)
+    for (size_t i = 4; i <= 4096; i *= 2)
     {
-        std::cout << i * i * 10 << ", ";
+        std::cout << i << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "# of G-gates : ";
-    for (size_t i = 1; i <= 10; ++i)
+    for (size_t i = 4; i <= 4096; i *= 2)
     {
-        std::cout << i * i * 10 << ", ";
+        std::cout << i << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Proof Length : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << measures[i].proofLength << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Query Complexity : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << measures[i].nQueries << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Prover Time : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << std::fixed << measures[i].proverTime << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Verifier Time : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << std::fixed << measures[i].verifierTime << std::setprecision(9) << ", ";
     }
@@ -263,8 +264,8 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCPWithPrecompute()
 template <typename Int> void TwoPC<Int>::ExperimentFLPCPSqrt()
 {
     size_t j = 0;
-    FLPCPMeasurement measures[10];
-    for (size_t i = 10; i <= 100; i += 10)
+    FLPCPMeasurement measures[6];
+    for (size_t i = 2; i <= 64; i *= 2)
     {
         measures[j] = TwoPC<Int>::FLPCP(i * i, i);
         if (!measures[j++].isVaild)
@@ -275,42 +276,99 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCPSqrt()
     }
 
     std::cout << "Vector Length : ";
-    for (size_t i = 10; i <= 100; i += 10)
+    for (size_t i = 2; i <= 64; i *= 2)
     {
         std::cout << i * i << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "# of G-gates : ";
-    for (size_t i = 10; i <= 100; i += 10)
+    for (size_t i = 2; i <= 64; i *= 2)
     {
         std::cout << i << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Proof Length : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 6; ++i)
     {
         std::cout << measures[i].proofLength << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Query Complexity : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 6; ++i)
     {
         std::cout << measures[i].nQueries << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Prover Time : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 6; ++i)
     {
         std::cout << std::fixed << measures[i].proverTime << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Verifier Time : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 6; ++i)
+    {
+        std::cout << std::fixed << measures[i].verifierTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+}
+
+template <typename Int> void TwoPC<Int>::ExperimentFLPCPSqrtWithPrecompute()
+{
+    size_t j = 0;
+    FLPCPMeasurement measures[6];
+    for (size_t i = 2; i <= 64; i *= 2)
+    {
+        measures[j] = TwoPC<Int>::FLPCPWithPrecompute(i * i, i);
+        if (!measures[j++].isVaild)
+        {
+            std::cout << "Invalid!" << std::endl;
+            return;
+        }
+    }
+
+    std::cout << "Vector Length : ";
+    for (size_t i = 2; i <= 64; i *= 2)
+    {
+        std::cout << i * i << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "# of G-gates : ";
+    for (size_t i = 2; i <= 64; i *= 2)
+    {
+        std::cout << i << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Proof Length : ";
+    for (size_t i = 0; i < 6; ++i)
+    {
+        std::cout << measures[i].proofLength << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Query Complexity : ";
+    for (size_t i = 0; i < 6; ++i)
+    {
+        std::cout << measures[i].nQueries << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Prover Time : ";
+    for (size_t i = 0; i < 6; ++i)
+    {
+        std::cout << std::fixed << measures[i].proverTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Verifier Time : ";
+    for (size_t i = 0; i < 6; ++i)
     {
         std::cout << std::fixed << measures[i].verifierTime << std::setprecision(9) << ", ";
     }
@@ -344,8 +402,8 @@ template <typename Int> FLPCPMeasurement TwoPC<Int>::FLPCPCoefficient(size_t inp
     auto start_query = std::chrono::high_resolution_clock::now();
     std::vector<Query<Int>> queries =
         InnerProductCircuit<Int>::MakeCoefficientQuery(Int::GenerateRandom(), inputLength, nPoly);
-
     const size_t nInputQueriesHalf = (queries.size() - 2u) / 2u;
+
     Int gR(0u);
     for (size_t i = 0; i < nInputQueriesHalf; ++i)
     {
@@ -368,10 +426,10 @@ template <typename Int> FLPCPMeasurement TwoPC<Int>::FLPCPCoefficient(size_t inp
 template <typename Int> void TwoPC<Int>::ExperimentFLPCPCoefficient()
 {
     size_t j = 0;
-    FLPCPMeasurement measures[10];
-    for (size_t i = 1; i <= 10; ++i)
+    FLPCPMeasurement measures[11];
+    for (size_t i = 4; i <= 4096; i *= 2)
     {
-        measures[j] = TwoPC<Int>::FLPCPCoefficient(i * i * 10, 1);
+        measures[j] = TwoPC<Int>::FLPCPCoefficient(i, 1);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;
@@ -380,42 +438,42 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCPCoefficient()
     }
 
     std::cout << "Vector Length : ";
-    for (size_t i = 1; i <= 10; i += 1)
+    for (size_t i = 4; i <= 4096; i *= 2)
     {
-        std::cout << i * i * 10 << ", ";
+        std::cout << i << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "# of polynomial : ";
-    for (size_t i = 1; i <= 10; i += 1)
+    for (size_t i = 4; i <= 4096; i *= 2)
     {
         std::cout << 1 << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Proof Length : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << measures[i].proofLength << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Query Complexity : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << measures[i].nQueries << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Prover Time : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << std::fixed << measures[i].proverTime << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Verifier Time : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 11; ++i)
     {
         std::cout << std::fixed << measures[i].verifierTime << std::setprecision(9) << ", ";
     }
@@ -425,8 +483,8 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCPCoefficient()
 template <typename Int> void TwoPC<Int>::ExperimentFLPCPCoefficientSqrt()
 {
     size_t j = 0;
-    FLPCPMeasurement measures[10];
-    for (size_t i = 10; i <= 100; i += 10)
+    FLPCPMeasurement measures[6];
+    for (size_t i = 2; i <= 64; i *= 2)
     {
         measures[j] = TwoPC<Int>::FLPCPCoefficient(i * i, i);
         if (!measures[j++].isVaild)
@@ -437,42 +495,42 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCPCoefficientSqrt()
     }
 
     std::cout << "Vector Length : ";
-    for (size_t i = 10; i <= 100; i += 10)
+    for (size_t i = 2; i <= 64; i *= 2)
     {
         std::cout << i * i << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "# of G-gates : ";
-    for (size_t i = 10; i <= 100; i += 10)
+    for (size_t i = 2; i <= 64; i *= 2)
     {
         std::cout << i << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Proof Length : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 6; ++i)
     {
         std::cout << measures[i].proofLength << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Query Complexity : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 6; ++i)
     {
         std::cout << measures[i].nQueries << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Prover Time : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 6; ++i)
     {
         std::cout << std::fixed << measures[i].proverTime << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "Verifier Time : ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < 6; ++i)
     {
         std::cout << std::fixed << measures[i].verifierTime << std::setprecision(9) << ", ";
     }

@@ -19,6 +19,12 @@ Mpint32::Mpint32(uint32_t value)
     mValue = ReduceInt32(value);
 }
 
+Mpint32::Mpint32(unsigned char* addr)
+{
+    std::memcpy(&mValue, addr, sizeof(uint32_t));
+    mValue = mValue >> 1;
+}
+
 const uint32_t Mpint32::GetBase()
 {
     return BASE;

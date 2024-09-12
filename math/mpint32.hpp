@@ -11,6 +11,7 @@ class Mpint32
 public:
     Mpint32();
     Mpint32(uint32_t value);
+    Mpint32(unsigned char* addr);
 
     static const uint32_t GetBase();
     static const uint32_t GetSeed();

@@ -7,6 +7,7 @@
 template <typename Int> class InteractiveProof
 {
 public:
+    InteractiveProof(const InteractiveProof<Int>& obj);
     InteractiveProof(std::vector<Polynomial<Int>>& polyPs, std::vector<Polynomial<Int>>& polyQs,
                      Polynomial<Int>& polyG);
 
@@ -15,6 +16,7 @@ public:
     std::vector<Proof<Int>> GetShares(size_t nShares);
     std::vector<Int> EvaluatePolyPs(Int x);
     std::vector<Int> EvaluatePolyQs(Int x);
+    Int GetRandomFromOracle();
 
 private:
     std::vector<Polynomial<Int>> mPolyPs;
@@ -22,6 +24,14 @@ private:
     Proof<Int> mProof;
     bool mIsFinalRound;
 };
+
+template <typename Int> InteractiveProof<Int>::InteractiveProof(const InteractiveProof<Int>& obj)
+{
+    mPolyPs = obj.mPolyPs;
+    mPolyQs = obj.mPolyQs;
+    mProof = obj.mProof;
+    mIsFinalRound = obj.mIsFinalRound;
+}
 
 template <typename Int>
 InteractiveProof<Int>::InteractiveProof(std::vector<Polynomial<Int>>& pPolys, std::vector<Polynomial<Int>>& qPolys,
@@ -78,6 +88,11 @@ template <typename Int> std::vector<Int> InteractiveProof<Int>::EvaluatePolyQs(I
         results.emplace_back(mPolyQs[i].Evaluate(x));
     }
     return results;
+}
+
+template <typename Int> Int InteractiveProof<Int>::GetRandomFromOracle()
+{
+    return mProof.GetRandomFromOracle();
 }
 
 #endif

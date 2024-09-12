@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../math/polynomial.hpp"
+#include "../math/sha512.hpp"
 #include "query.hpp"
 
 template<typename Int> class Proof
@@ -23,6 +24,7 @@ public:
     size_t GetLength() const;
     std::vector<Proof<Int>> GetShares(size_t nShares);
     std::vector<Int> GetRandoms(size_t nRandoms);
+    Int GetRandomFromOracle();
 
     Proof<Int>& operator=(const Proof<Int>& obj);
 
@@ -106,7 +108,7 @@ template <typename Int> Int Proof<Int>::GetQueryAnswer(const Query<Int>& query) 
 {
     assert(mLength == query.mLength);
 
-    Int result(0u);
+    Int result((uint64_t)0);
     for (size_t i = 0; i < mLength; ++i)
     {
         result += mValues[i] * query.mValues[i];
@@ -167,6 +169,16 @@ template <typename Int> std::vector<Int> Proof<Int>::GetRandoms(size_t nRandoms)
         ++randoms;
     }
     return randomsVector;
+}
+
+template <typename Int> Int Proof<Int>::GetRandomFromOracle()
+{
+    SHA512_CTX ctx;
+    unsigned char digest[SHA512_DIGEST_LENGTH];
+    SHA512_Init(&ctx);
+    SHA512_Update(&ctx, mValues + (mLength - mProofLength), mProofLength * sizeof(Int));
+    SHA512_Final(digest, &ctx);
+    return Int(digest);
 }
 
 #endif

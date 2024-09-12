@@ -85,8 +85,8 @@ template <typename Int> Polynomial<Int>::~Polynomial()
 
 template <typename Int> Int Polynomial<Int>::Evaluate(const Int x) const
 {
-    Int value(0u);
-    Int power(1u);
+    Int value((uint64_t)0);
+    Int power((uint64_t)1);
     for (size_t i = 0; i < mCapacity; ++i)
     {
         value += power * mCoefficients[i];
@@ -117,7 +117,7 @@ template <typename Int> Polynomial<Int> Polynomial<Int>::LagrangeInterpolation(I
             }
 
             prod *= Int(i) - Int(j);
-            Int precedent(0u);
+            Int precedent((uint64_t)0);
 
             for (size_t k = 0; k < nPoints; ++k)
             {

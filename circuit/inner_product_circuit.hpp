@@ -31,7 +31,7 @@ template <typename Int> Int InnerProductCircuit<Int>::Forward(Int* op0, Int* op1
 {
     assert(length > 0);
 
-    Int result(0);
+    Int result((uint64_t)0);
     for (size_t i = 0; i < length; ++i)
     {
         result += (*op0++) * (*op1++);
@@ -211,7 +211,7 @@ std::vector<Query<Int>> InnerProductCircuit<Int>::MakeQuery(Int random, const si
     ++queriesCurr;
     for (size_t i = 1; i < nCoefficients; ++i)
     {
-        Int sum(0u);
+        Int sum((uint64_t)0);
         for (size_t j = 0; j < nGGate; ++j)
         {
             powers[j] *= Int(j + 1);
@@ -384,7 +384,7 @@ std::vector<Query<Int>> InnerProductCircuit<Int>::MakeRoundQuery(Int random, siz
     ++queriesCurr;
     for (size_t i = 1; i < queryLength; ++i)
     {
-        Int sum(0u);
+        Int sum((uint64_t)0);
         for (size_t j = 0; j < subvectorSize - 1; ++j)
         {
             powers[j] *= Int(j + 1);

@@ -138,67 +138,85 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 
 ## FLIOP Complexity over $\mathbb Z_{2^{61}-1}$
 
-- Proof Size: $O(\log_2{N})$
-    
-    ![FLIOP_PROOF_SIZE.png](./figure/FLIOP/FLIOP_PROOF_SIZE.png)
+### Baseline vs Baseline with random oracle
+
+<div align="center">
+  <table>
+    <tr>
+      <th> Proof Size: $O(\log_2{N})$ </th>
+      <th> Query Complexity: $O(\log_2{N})$ </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLIOP/proof_size.png" /> </td>
+      <td> <img src="./figure/FLIOP/query_complexity.png" /> </td>
+    </tr>
+    <tr>
+      <th> Prover Time: $O(N)$ </th>
+      <th> Verifier Time </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLIOP/prover_time.png" /> </td>
+      <td> <img src="./figure/FLIOP/verifier_time.png" /> </td>
+    </tr>
+    <tr>
+      <th> LAN Delay </th>
+      <th> WAN Delay </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLIOP/lan_time.png" /> </td>
+      <td> <img src="./figure/FLIOP/wan_time.png" /> </td>
+    </tr>
+  </table>
+</div>
+
+### Coefficient version vs Coefficient with random oracle
+
+<div align="center">
+  <table>
+    <tr>
+      <th> Proof Size: $O(\log_2{N})$ </th>
+      <th> Query Complexity: $O(\log_2{N})$ </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLIOP%20Coefficient/proof_size.png" /> </td>
+      <td> <img src="./figure/FLIOP%20Coefficient/query_complexity.png" /> </td>
+    </tr>
+    <tr>
+      <th> Prover Time: $O(N)$ </th>
+      <th> Verifier Time </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLIOP%20Coefficient/prover_time.png" /> </td>
+      <td> <img src="./figure/FLIOP%20Coefficient/verifier_time.png" /> </td>
+    </tr>
+    <tr>
+      <th> LAN Delay </th>
+      <th> WAN Delay </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLIOP%20Coefficient/lan_time.png" /> </td>
+      <td> <img src="./figure/FLIOP%20Coefficient/wan_time.png" /> </td>
+    </tr>
+  </table>
+</div>
     
 
-- Query Complexity: $O(\log_2{N})$
-    
-    ![FLIOP_QUERY_COMPLEXITY.png](./figure/FLIOP/FLIOP_QUERY_COMPLEXITY.png)
-    
+### Comparison
 
-- Prover Time: $O(N)$
-    
-    ![FLIOP_PROVER_TIME.png](./figure/FLIOP/FLIOP_PROVER_TIME.png)
-    
+<div align="center">
+  <table>
+    <tr>
+      <th> Prover Time </th>
+      <th> Verifier Time </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/FLIOP%20Comparison/prover_time.png" /> </td>
+      <td> <img src="./figure/FLIOP%20Comparison/verifier_time.png" /> </td>
+    </tr>
+  </table>
+</div>
 
-- Verifier Time
-    
-    ![FLIOP_VERIFIER_TIME.png](./figure/FLIOP/FLIOP_VERIFIER_TIME.png)
-    
-    Prediction: $O(\log_2{N})$
-    
-    Measured: $O(\sqrt[4]{N})$
-    
-
-### FLIOP Complexity (Coefficient version)
-
-- Proof Size: $O(\log_2{N})$
-    
-    ![FLIOP_COEFF_PROOF_SIZE.png](./figure/FLIOP%20Coefficient/FLIOP_COEFF_PROOF_SIZE.png)
-    
-
-- Query Complexity: $O(\log_2{N})$
-    
-    ![FLIOP_COEFF_QUERY_COMPLEXITY.png](./figure/FLIOP%20Coefficient/FLIOP_COEFF_QUERY_COMPLEXITY.png)
-    
-
-- Prover Time: $O(N)$
-    
-    ![FLIOP_COEFF_PROVER_TIME.png](./figure/FLIOP%20Coefficient/FLIOP_COEFF_PROVER_TIME.png)
-    
-
-- Verifier Time
-    
-    ![FLIOP_COEFF_VERIFIER_TIME.png](./figure/FLIOP%20Coefficient/FLIOP_COEFF_VERIFIER_TIME.png)
-    
-    Preduction: $O(\log_2{N})$
-    
-    Measured: $O(\sqrt[4]{N})$
-    
-
-### Compare FLIOP
-
-- Prover Time
-    
-    ![COMPARE_PROVER_TIME_FLIOP.png](./figure/FLIOP%20Coefficient/COMPARE_PROVER_TIME_FLIOP.png)
-    
-
-- Verifier Time
-    
-    ![COMPARE_VERIFIER_TIME_FLIOP.png](./figure/FLIOP%20Coefficient/COMPARE_VERIFIER_TIME_FLIOP.png)
-    
+## Network Simulation on Secret-Shared Data (3PC)
 
 ### LAN
 

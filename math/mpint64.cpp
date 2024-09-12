@@ -19,6 +19,12 @@ Mpint64::Mpint64(uint64_t value)
     mValue = Reduce(value);
 }
 
+Mpint64::Mpint64(unsigned char* addr)
+{
+    std::memcpy(&mValue, addr, sizeof(uint64_t));
+    mValue = mValue >> 3;
+}
+
 const uint64_t Mpint64::GetBase()
 {
     return BASE;

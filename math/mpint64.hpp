@@ -10,6 +10,7 @@ class Mpint64
 public:
     Mpint64();
     Mpint64(uint64_t value);
+    Mpint64(unsigned char* addr);
 
     static const uint64_t GetBase();
     static const uint32_t GetSeed();

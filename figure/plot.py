@@ -4,628 +4,827 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 class FLPCP:
+    xs = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
+    x_labels = [fr'$2^{{{x}}}$' for x in range(2, 13)]
+
     @staticmethod
-    def flpcp_proof_size():
+    def proof_size():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        proof_lengths = [184, 664, 1464, 2584, 4024, 5784, 7864, 10264, 12984, 16024]
-        predictions = [16 * x + 24 for x in xs]
+        proof_lengths = [88, 152, 280, 536, 1048, 2072, 4120, 8216, 16408, 32792, 65560]
+        predictions = [16 * x + 24 for x in FLPCP.xs]
 
-        ax.plot(xs, proof_lengths, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN$')
+        ax.plot(FLPCP.xs, proof_lengths, color='red', marker='o', label='measurement')
+        ax.plot(FLPCP.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN$')
 
-        plt.xlabel(r'Input vector length ($\times 10$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Proof size (bytes)')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCP.xs, labels=FLPCP.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLPCP_PROOF_SIZE_ORG.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'proof_size.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def flpcp_query_complexity():
+    def query_complexity():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        ys = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+        ys = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
 
-        ax.plot(xs, ys, color='red', marker='o')
+        ax.plot(FLPCP.xs, ys, color='red', marker='o')
 
-        plt.xlabel(r'Input vector length ($\times 10$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Query complexity')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCP.xs, labels=FLPCP.x_labels)
         plt.yticks(ticks=[4], labels=['4'])
         plt.tight_layout()
-        fig.savefig(f'FLPCP_QUERY_COMPLEXITY_ORG.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'query_complexity.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def flpcp_prover_time():
+    def prover_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        ys = [0.029500, 0.794100000, 8.880600000, 46.639700000, 172.233300000, 517.479600000, 1293.393600000, 2887.757200000, 5854.662300000, 11004.468700000]
-        poly_a = np.polyfit([x * x * x for x in xs], ys, 1)
-        predictions = [poly_a[0] * math.pow(x, 3) + 0.029500 - poly_a[0] * math.pow(10, 3) for x in xs]
+        ys = [0.009600, 0.015400000, 0.067500000, 0.426100000, 3.111200000, 24.086200000, 184.460500000, 1450.466200000, 12067.545000000, 92834.565900000, 741167.230300000]
+        poly_a = np.polyfit(FLPCP.xs[0:2] + FLPCP.xs[5:7], ys[0:2] + ys[5:7], 3)
+        predictions = [poly_a[0] * x * x * x + poly_a[1] * x * x + poly_a[2] * x + poly_a[3] for x in FLPCP.xs]
 
-        ys_precompute = [0.004200, 0.021600000, 0.110100000, 0.298200000, 0.708700000, 1.521100000, 2.735500000, 4.602400000, 7.342800000, 11.389000000]
-        poly_b = np.polyfit([x * x for x in xs], ys_precompute, 1)
-        predictions_precompute = [poly_b[0] * math.pow(x, 2) + 0.004200 - poly_b[0] * math.pow(10, 2) for x in xs]
+        ys_precompute = [0.001700000, 0.002100000, 0.005200000, 0.013800000, 0.050000000, 0.189400000, 0.735900000, 2.908500000, 11.614400000, 46.401400000, 189.302900000]
+        poly_b = np.polyfit(FLPCP.xs[0:2] + FLPCP.xs[6:7], ys_precompute[0:2] + ys_precompute[6:7], 2)
+        predictions_precompute = [poly_b[0] * x * x + poly_b[1] * x + poly_b[2] for x in FLPCP.xs]
 
-        ax.plot(xs, ys, color='red', marker='o', label='Without precomputation')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN^3$')
-        ax.plot(xs, ys_precompute, color='green', marker='s', label='With precomputation')
-        ax.plot(xs, predictions_precompute, color='magenta', marker='v', linestyle='--', label=r'$cN^2$')
+        ax.plot(FLPCP.xs, ys, color='red', marker='o', label='not precomputed')
+        ax.plot(FLPCP.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN^3$')
+        ax.plot(FLPCP.xs, ys_precompute, color='green', marker='s', label='precomputed')
+        ax.plot(FLPCP.xs, predictions_precompute, color='magenta', marker='v', linestyle='--', label=r'$cN^2$')
 
-        plt.xlabel(r'Input vector length ($\times 10$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Prover time (ms)')
+        plt.xscale('log')
         plt.yscale('log')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
+        plt.xticks(ticks=FLPCP.xs, labels=FLPCP.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLPCP_PROVER_TIME_ORG.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'prover_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def flpcp_verifier_time():
+    def verifier_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        ys = [0.039700000, 0.531700000, 2.587500000, 8.167200000, 19.783400000, 40.911600000, 75.624400000, 128.840000000, 206.251800000, 314.377600000]
-        poly_a = np.polyfit(xs, ys, 2)
-        predictions = [poly_a[0] * x * x + poly_a[1] * x + poly_a[2] for x in xs]
+        ys = [0.010600000, 0.025200000, 0.091500000, 0.344100000, 1.373100000, 5.306800000, 21.071200000, 83.892500000, 334.685600000, 1338.557400000, 5363.491900000]
+        poly_a = np.polyfit(FLPCP.xs[0:1] + FLPCP.xs[5:7], ys[0:1] + ys[5:7], 2)
+        predictions = [poly_a[0] * x * x + poly_a[1] * x + poly_a[2] for x in FLPCP.xs]
 
-        ys_precompute = [0.000900000, 0.002400000, 0.005100000, 0.009000000, 0.014000000, 0.020200000, 0.027400000, 0.035600000, 0.045100000, 0.055900000]
-        poly_b = np.polyfit(xs, ys_precompute, 1)
-        predictions_precompute = [poly_b[0] * x + poly_b[1] for x in xs]
+        ax.plot(FLPCP.xs, ys, color='red', marker='o', label='measurement')
+        ax.plot(FLPCP.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN^2$')
 
-        ax.plot(xs, ys, color='red', marker='o', label='Without precomputation')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN^2$')
-        ax.plot(xs, ys_precompute, color='green', marker='s', label='With precomputation')
-        ax.plot(xs, predictions_precompute, color='magenta', marker='v', linestyle='--', label=r'$cN$')
-
-        plt.xlabel(r'Input vector length ($\times 10$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Verifier time (ms)')
+        plt.xscale('log')
         plt.yscale('log')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
+        plt.xticks(ticks=FLPCP.xs, labels=FLPCP.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLPCP_VERIFIER_TIME_ORG.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'verifier_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
+
+    @staticmethod
+    def plot():
+        FLPCP.proof_size()
+        FLPCP.query_complexity()
+        FLPCP.prover_time()
+        FLPCP.verifier_time()
 
 
 class FLPCPSqrt:
+    xs = [4, 16, 64, 256, 1024, 4096]
+    x_labels = [fr'$2^{{{x}}}$' for x in range(2, 13, 2)]
+
     @staticmethod
-    def flpcp_proof_size():
+    def proof_size():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [100, 400, 900, 1600, 2500, 3600, 4900, 6400, 8100, 10000]
-        proof_lengths = [164, 324, 484, 644, 804, 964, 1124, 1284, 1444, 1604]
-        predictions = [16 * math.sqrt(x) for x in xs]
+        proof_lengths = [72, 136, 264, 520, 1032, 2056]
+        predictions = [32 * math.sqrt(x) + 8 for x in FLPCPSqrt.xs]
 
-        ax.plot(xs, proof_lengths, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\sqrt{N}$')
+        ax.plot(FLPCPSqrt.xs, proof_lengths, color='red', marker='o', label='measurement')
+        ax.plot(FLPCPSqrt.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\sqrt{N}$')
 
-        plt.xlabel(r'Input vector length ($\times 10^2$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Proof size (bytes)')
-        plt.xticks(ticks=xs, labels=[str(int(x / 100)) for x in xs])
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPSqrt.xs, labels=FLPCPSqrt.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLPCP_PROOF_SIZE.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'proof_size.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def flpcp_query_complexity():
+    def query_complexity():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [100, 400, 900, 1600, 2500, 3600, 4900, 6400, 8100, 10000]
-        ys = [22, 42, 62, 82, 102, 122, 142, 162, 182, 202]
-        predictions = [2 * math.sqrt(x) + 2 for x in xs]
+        ys = [6, 10, 18, 34, 66, 130]
+        predictions = [2 * math.sqrt(x) + 2 for x in FLPCPSqrt.xs]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\sqrt{N}$')
+        ax.plot(FLPCPSqrt.xs, ys, color='red', marker='o', label='measurement')
+        ax.plot(FLPCPSqrt.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\sqrt{N}$')
 
-        plt.xlabel(r'Input vector length ($\times 10^2$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Query complexity')
-        plt.xticks(ticks=xs, labels=[str(int(x / 100)) for x in xs])
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPSqrt.xs, labels=FLPCPSqrt.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLPCP_QUERY_COMPLEXITY.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'query_complexity.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def flpcp_prover_time():
+    def prover_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [100, 400, 900, 1600, 2500, 3600, 4900, 6400, 8100, 10000]
-        ys = [0.169000, 1.912700000, 8.778000000, 26.755900000, 63.310500000, 129.074500000, 237.618400000, 404.773000000, 642.781400000, 973.005100000]
-        predictions = [0.1 * math.pow(x / 100, 2) for x in xs]
+        ys = [0.007800000, 0.028900000, 0.118600000, 1.071100000, 13.440900000, 194.183000000]
+        poly = np.polyfit(FLPCPSqrt.xs[0:1] + FLPCPSqrt.xs[3:4] + FLPCPSqrt.xs[5:6], ys[0:1] + ys[3:4] + ys[5:6], 2)
+        predictions = [poly[0] * x * x + poly[1] * x + poly[2] for x in FLPCPSqrt.xs]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN^2$')
+        precomputed = [0.001900000, 0.003400000, 0.010400000, 0.063000000, 0.412400000, 3.087300000]
+        poly_b = np.polyfit([math.sqrt(x) for x in [4, 16, 256, 1024]],
+                          [0.001900000, 0.003400000, 0.063000000, 0.412400000], 3)
+        predictions_precomputed = [poly_b[0] * x * math.sqrt(x) + poly_b[1] * x + poly_b[2] * math.sqrt(x) + poly_b[3] for x in
+                       FLPCPSqrt.xs]
 
-        plt.xlabel(r'Input vector length ($\times 10^2$)')
+        ax.plot(FLPCPSqrt.xs, ys, color='red', marker='o', label='not precomputed')
+        ax.plot(FLPCPSqrt.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN^2$')
+        ax.plot(FLPCPSqrt.xs, precomputed, color='green', marker='s', label='precomputed')
+        ax.plot(FLPCPSqrt.xs, predictions_precomputed, color='magenta', marker='v', linestyle='--', label=r'$cN\sqrt{N}$')
+
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Prover time (ms)')
-        plt.xticks(ticks=xs, labels=[str(int(x / 100)) for x in xs])
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPSqrt.xs, labels=FLPCPSqrt.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLPCP_PROVER_TIME.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'prover_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def flpcp_verifier_time():
+    def verifier_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [100, 400, 900, 1600, 2500, 3600, 4900, 6400, 8100, 10000]
-        ys = [0.065000000, 0.379100000, 1.144500000, 2.516100000, 4.708000000, 8.054800000, 12.766600000, 18.394200000, 26.286500000, 35.643100000]
-        predictions = [0.000036 * x * math.sqrt(x) for x in xs]
+        ys = [0.004900000, 0.017000000, 0.061300000, 0.324700000, 1.892400000, 13.300400000]
+        poly = np.polyfit([math.sqrt(x) for x in [4, 16, 256, 1024]], [0.004900000, 0.017000000, 0.324700000, 1.892400000], 3)
+        predictions = [poly[0] * x * math.sqrt(x) + poly[1] * x + poly[2] * math.sqrt(x) + poly[3] for x in FLPCPSqrt.xs]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN\sqrt{N}$')
+        ax.plot(FLPCPSqrt.xs, ys, color='red', marker='o', label='measurement')
+        ax.plot(FLPCPSqrt.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN\sqrt{N}$')
 
-        plt.xlabel(r'Input vector length ($\times 10^2$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Verifier time (ms)')
-        plt.xticks(ticks=xs, labels=[str(int(x / 100)) for x in xs])
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPSqrt.xs, labels=FLPCPSqrt.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLPCP_VERIFIER_TIME.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'verifier_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
+
+    @staticmethod
+    def plot():
+        FLPCPSqrt.proof_size()
+        FLPCPSqrt.query_complexity()
+        FLPCPSqrt.prover_time()
+        FLPCPSqrt.verifier_time()
 
 
 class FLPCPCoeff:
+    xs = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
+    x_labels = [fr'$2^{{{x}}}$' for x in range(2, 13)]
+
     @staticmethod
-    def flpcp_proof_size():
+    def proof_size():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        proof_lengths = [92, 332, 732, 1292, 2012, 2892, 3932, 5132, 6492, 8012]
-        predictions = [8 * x + 12 for x in xs]
+        proof_lengths = [88, 152, 280, 536, 1048, 2072, 4120, 8216, 16408, 32792, 65560]
+        predictions = [16 * x + 24 for x in FLPCPCoeff.xs]
 
-        ax.plot(xs, proof_lengths, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN$')
+        ax.plot(FLPCPCoeff.xs, proof_lengths, color='red', marker='o', label='measurement')
+        ax.plot(FLPCPCoeff.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN$')
 
-        plt.xlabel(r'Input vector length ($\times 10$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Proof size (bytes)')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPCoeff.xs, labels=FLPCPCoeff.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLPCP_COEFF_PROOF_SIZE_ORG.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'proof_size.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def flpcp_query_complexity():
+    def query_complexity():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        ys = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+        ys = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
 
-        ax.plot(xs, ys, color='red', marker='o')
+        ax.plot(FLPCPCoeff.xs, ys, color='red', marker='o')
 
-        plt.xlabel(r'Input vector length ($\times 10$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Query complexity')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
+        plt.xscale('log')
+        plt.xticks(ticks=FLPCPCoeff.xs, labels=FLPCPCoeff.x_labels)
         plt.yticks(ticks=[4], labels=['4'])
         plt.tight_layout()
-        fig.savefig(f'FLPCP_COEFF_QUERY_COMPLEXITY_ORG.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'query_complexity.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def flpcp_prover_time():
+    def prover_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        ys = [0.005300, 0.005300000, 0.021900000, 0.063900000, 0.152100000, 0.311000000, 0.574600000, 0.983100000, 1.557400000, 2.403000000]
-        predictions = [0.000002403 * x * x for x in xs]
+        ys = [0.001400000, 0.001200000, 0.001800000, 0.004400000, 0.015100000, 0.056900000, 0.220500000, 0.865000000, 3.468100000, 13.808900000, 54.619200000]
+        poly = np.polyfit(FLPCPCoeff.xs[1:3] + FLPCPCoeff.xs[5:6], ys[1:3] + ys[5:6], 2)
+        predictions = [poly[0] * x * x + poly[1] * x + poly[2] for x in FLPCPCoeff.xs]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN^2$')
+        ax.plot(FLPCPCoeff.xs, ys, color='red', marker='o', label='measurement')
+        ax.plot(FLPCPCoeff.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN^2$')
 
-        plt.xlabel(r'Input vector length ($\times 10$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Prover time (ms)')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
-        plt.tight_layout()
-        plt.legend()
-        fig.savefig(f'FLPCP_COEFF_PROVER_TIME_ORG.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
-        plt.show()
-
-    @staticmethod
-    def flpcp_verifier_time():
-        fig, ax = plt.subplots(figsize=(5, 4))
-
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        ys = [0.003000000, 0.008400000, 0.013600000, 0.024200000, 0.032100000, 0.043200000, 0.064700000, 0.089200000, 0.110500000, 0.139200000]
-        predictions = [0.0001392 * x for x in xs]
-
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN$')
-
-        plt.xlabel(r'Input vector length ($\times 10$)')
-        plt.ylabel('Verifier time (ms)')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
-        plt.tight_layout()
-        plt.legend()
-        fig.savefig(f'FLPCP_COEFF_VERIFIER_TIME_ORG.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
-        plt.show()
-
-    @staticmethod
-    def compare_prover_time():
-        fig, ax = plt.subplots(figsize=(5, 4))
-
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        coeff = [0.005300, 0.005300000, 0.021900000, 0.063900000, 0.152100000, 0.311000000, 0.574600000, 0.983100000,
-              1.557400000, 2.403000000]
-        non_coeff = [0.021200, 0.649100000, 6.876100000, 37.580900000, 141.064100000, 418.446700000, 1050.498000000, 2333.715100000, 4724.683200000, 9061.323000000]
-
-        ax.plot(xs, non_coeff, color='red', marker='o', label='FLPCP')
-        ax.plot(xs, coeff, color='blue', marker='^', label='FLPCP Coefficient')
-
-        plt.xlabel(r'Input vector length ($\times 10$)')
-        plt.ylabel('Prover time (ms)')
+        plt.xscale('log')
         plt.yscale('log')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
+        plt.xticks(ticks=FLPCPCoeff.xs, labels=FLPCPCoeff.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'COMPARE_PROVER_TIME_FLPCP.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'prover_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def compare_verifier_time():
+    def verifier_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        coeff = [0.003000000, 0.008400000, 0.013600000, 0.024200000, 0.032100000, 0.043200000, 0.064700000, 0.089200000,
-              0.110500000, 0.139200000]
-        non_coeff = [0.015600000, 0.193700000, 0.937400000, 2.938900000, 7.133200000, 14.717300000, 27.212000000, 46.365500000, 74.206300000, 114.775100000]
+        ys = [0.002300000, 0.001900000, 0.005900000, 0.007100000, 0.011500000, 0.022700000, 0.046000000, 0.090700000, 0.186000000, 0.373700000, 0.755800000]
+        poly = np.polyfit(FLPCPCoeff.xs[1:2] + FLPCPCoeff.xs[7:8], ys[1:2] + ys[7:8], 1)
+        predictions = [poly[0] * x + poly[1] for x in FLPCPCoeff.xs]
 
-        ax.plot(xs, non_coeff, color='red', marker='o', label='FLPCP')
-        ax.plot(xs, coeff, color='blue', marker='^', label=r'FLPCP Coefficient')
+        ax.plot(FLPCPCoeff.xs, ys, color='red', marker='o', label='measurement')
+        ax.plot(FLPCPCoeff.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN$')
 
-        plt.xlabel(r'Input vector length ($\times 10$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Verifier time (ms)')
+        plt.xscale('log')
         plt.yscale('log')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
+        plt.xticks(ticks=FLPCPCoeff.xs, labels=FLPCPCoeff.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'COMPARE_VERIFIER_TIME_FLPCP.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'verifier_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
+
+    @staticmethod
+    def plot():
+        FLPCPCoeff.proof_size()
+        FLPCPCoeff.query_complexity()
+        FLPCPCoeff.prover_time()
+        FLPCPCoeff.verifier_time()
 
 
 class FLPCPCoeffSqrt:
+    xs = [4, 16, 64, 256, 1024, 4096]
+    x_labels = [fr'$2^{{{x}}}$' for x in range(2, 13, 2)]
+
     @staticmethod
-    def flpcp_coeff_proof_size():
+    def proof_size():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [100, 400, 900, 1600, 2500, 3600, 4900, 6400, 8100, 10000]
-        proof_lengths = [164, 324, 484, 644, 804, 964, 1124, 1284, 1444, 1604]
-        predictions = [16 * math.sqrt(x) for x in xs]
+        proof_lengths = [72, 136, 264, 520, 1032, 2056]
+        predictions = [32 * math.sqrt(x) + 8 for x in FLPCPCoeffSqrt.xs]
 
-        ax.plot(xs, proof_lengths, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\sqrt{N}$')
+        ax.plot(FLPCPCoeffSqrt.xs, proof_lengths, color='red', marker='o', label='measurement')
+        ax.plot(FLPCPCoeffSqrt.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\sqrt{N}$')
 
-        plt.xlabel(r'Input vector length ($\times 10^2$)')
+        plt.xlabel(r'Input vector length')
         plt.ylabel('Proof size (bytes)')
-        plt.xticks(ticks=xs, labels=[str(int(x / 100)) for x in xs])
-        plt.tight_layout()
-        plt.legend()
-        fig.savefig(f'FLPCP_COEFF_PROOF_SIZE.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
-        plt.show()
-
-    @staticmethod
-    def flpcp_coeff_query_complexity():
-        fig, ax = plt.subplots(figsize=(5, 4))
-
-        xs = [100, 400, 900, 1600, 2500, 3600, 4900, 6400, 8100, 10000]
-        ys = [22, 42, 62, 82, 102, 122, 142, 162, 182, 202]
-        predictions = [2 * math.sqrt(x) + 2 for x in xs]
-
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\sqrt{N}$')
-
-        plt.xlabel(r'Input vector length ($\times 10^2$)')
-        plt.ylabel('Query complexity')
-        plt.xticks(ticks=xs, labels=[str(int(x / 100)) for x in xs])
-        plt.tight_layout()
-        plt.legend()
-        fig.savefig(f'FLPCP_COEFF_QUERY_COMPLEXITY.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
-        plt.show()
-
-    @staticmethod
-    def flpcp_coeff_prover_time():
-        fig, ax = plt.subplots(figsize=(5, 4))
-
-        xs = [100, 400, 900, 1600, 2500, 3600, 4900, 6400, 8100, 10000]
-        ys = [0.009800, 0.030800000, 0.090200000, 0.201900000, 0.420700000, 0.580300000, 1.201000000, 1.380100000, 1.899100000, 2.596800000]
-        predictions = [0.0000026 * x * math.sqrt(x) for x in xs]
-
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN\sqrt{N}$')
-
-        plt.xlabel(r'Input vector length ($\times 10^2$)')
-        plt.ylabel('Prover time (ms)')
-        plt.xticks(ticks=xs, labels=[str(int(x / 100)) for x in xs])
-        plt.tight_layout()
-        plt.legend()
-        fig.savefig(f'FLPCP_COEFF_PROVER_TIME.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
-        plt.show()
-
-    @staticmethod
-    def flpcp_coeff_verifier_time():
-        fig, ax = plt.subplots(figsize=(5, 4))
-
-        xs = [100, 400, 900, 1600, 2500, 3600, 4900, 6400, 8100, 10000]
-        ys = [0.046800000, 0.276400000, 0.858600000, 1.929400000, 3.790800000, 6.883700000, 10.330900000, 15.036700000, 20.664200000, 28.498200000]
-        predictions = [0.0000285 * x * math.sqrt(x) for x in xs]
-
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN\sqrt{N}$')
-
-        plt.xlabel(r'Input vector length ($\times 10^2$)')
-        plt.ylabel('Verifier time (ms)')
-        plt.xticks(ticks=xs, labels=[str(int(x / 100)) for x in xs])
-        plt.tight_layout()
-        plt.legend()
-        fig.savefig(f'FLPCP_COEFF_VERIFIER_TIME.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
-        plt.show()
-
-    @staticmethod
-    def compare_prover_time():
-        fig, ax = plt.subplots(figsize=(5, 4))
-
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        coeff = [0.009800, 0.030800000, 0.090200000, 0.201900000, 0.420700000, 0.580300000, 1.201000000, 1.380100000, 1.899100000, 2.596800000]
-        non_coeff = [0.169000, 1.912700000, 8.778000000, 26.755900000, 63.310500000, 129.074500000, 237.618400000, 404.773000000, 642.781400000, 973.005100000]
-
-        ax.plot(xs, non_coeff, color='red', marker='o', label='FLPCP')
-        ax.plot(xs, coeff, color='blue', marker='^', label='FLPCP Coefficient')
-
-        plt.xlabel(r'Input vector length ($\times 10$)')
-        plt.ylabel('Prover time (ms)')
+        plt.xscale('log')
         plt.yscale('log')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
+        plt.xticks(ticks=FLPCPCoeffSqrt.xs, labels=FLPCPCoeffSqrt.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'COMPARE_PROVER_TIME_FLPCP_SQRT.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'proof_size.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def compare_verifier_time():
+    def query_complexity():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [10, 40, 90, 160, 250, 360, 490, 640, 810, 1000]
-        coeff = [0.046800000, 0.276400000, 0.858600000, 1.929400000, 3.790800000, 6.883700000, 10.330900000, 15.036700000, 20.664200000, 28.498200000]
-        non_coeff = [0.065000000, 0.379100000, 1.144500000, 2.516100000, 4.708000000, 8.054800000, 12.766600000, 18.394200000, 26.286500000, 35.643100000]
+        ys = [6, 10, 18, 34, 66, 130]
+        predictions = [2 * math.sqrt(x) + 2 for x in FLPCPCoeffSqrt.xs]
 
-        ax.plot(xs, non_coeff, color='red', marker='o', label='FLPCP')
-        ax.plot(xs, coeff, color='blue', marker='^', label=r'FLPCP Coefficient')
+        ax.plot(FLPCPCoeffSqrt.xs, ys, color='red', marker='o', label='measurement')
+        ax.plot(FLPCPCoeffSqrt.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\sqrt{N}$')
 
-        plt.xlabel(r'Input vector length ($\times 10$)')
-        plt.ylabel('Verifier time (ms)')
-        plt.xticks(ticks=xs, labels=[str(int(x / 10)) for x in xs])
+        plt.xlabel(r'Input vector length')
+        plt.ylabel('Query complexity')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPCoeffSqrt.xs, labels=FLPCPCoeffSqrt.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'COMPARE_VERIFIER_TIME_FLPCP_SQRT.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig('query_complexity.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
+
+    @staticmethod
+    def prover_time():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        ys = [0.001400000, 0.002700000, 0.004600000, 0.021000000, 0.131000000, 0.961800000]
+        poly = np.polyfit([math.sqrt(x) for x in FLPCPCoeffSqrt.xs[1:4] + FLPCPCoeffSqrt.xs[5:6]], ys[1:4] + ys[5:6], 3)
+        predictions = [poly[0] * x * math.sqrt(x) + poly[1] * x + poly[2] * math.sqrt(x) + poly[3] for x in FLPCPCoeffSqrt.xs]
+
+        ax.plot(FLPCPCoeffSqrt.xs, ys, color='red', marker='o', label='measurement')
+        ax.plot(FLPCPCoeffSqrt.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN\sqrt{N}$')
+
+        plt.xlabel(r'Input vector length')
+        plt.ylabel('Prover time (ms)')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPCoeffSqrt.xs, labels=FLPCPCoeffSqrt.x_labels)
+        plt.tight_layout()
+        plt.legend()
+        fig.savefig(f'prover_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def verifier_time():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        ys = [0.002000000, 0.008800000, 0.026900000, 0.189700000, 1.311300000, 10.675500000]
+        poly = np.polyfit([math.sqrt(x) for x in FLPCPCoeffSqrt.xs[0:2] + FLPCPCoeffSqrt.xs[4:6]], ys[0:2] + ys[4:6], 3)
+        predictions = [poly[0] * x * math.sqrt(x) + poly[1] * x + poly[2] * math.sqrt(x) + poly[3] for x in
+                       FLPCPCoeffSqrt.xs]
+
+        ax.plot(FLPCPCoeffSqrt.xs, ys, color='red', marker='o', label='measurement')
+        ax.plot(FLPCPCoeffSqrt.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN\sqrt{N}$')
+
+        plt.xlabel(r'Input vector length')
+        plt.ylabel('Verifier time (ms)')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPCoeffSqrt.xs, labels=FLPCPCoeffSqrt.x_labels)
+        plt.tight_layout()
+        plt.legend()
+        fig.savefig(f'verifier_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def plot():
+        FLPCPCoeffSqrt.proof_size()
+        FLPCPCoeffSqrt.query_complexity()
+        FLPCPCoeffSqrt.prover_time()
+        FLPCPCoeffSqrt.verifier_time()
+
+
+class ComparisonFLPCPMethods:
+    xs = [4, 16, 64, 256, 1024, 4096]
+    x_labels = [fr'$2^{{{x}}}$' for x in range(2, 13, 2)]
+
+    @staticmethod
+    def proof_size():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        flpcp = [88, 280, 1048, 4120, 16408, 65560]
+        flpcp_sqrt = [72, 136, 264, 520, 1032, 2056]
+        flpcp_coeff = [88, 280, 1048, 4120, 16408, 65560]
+        flpcp_coeff_sqrt = [72, 136, 264, 520, 1032, 2056]
+
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp, color='red', marker='o', label='Baseline')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_coeff, color='blue', marker='^', label='Coefficient')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_sqrt, color='green', marker='s', label='Sqrt')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_coeff_sqrt, color='magenta', marker='v', label='Coefficient + Sqrt')
+
+        plt.xlabel(r'Input vector length')
+        plt.ylabel('Proof size (bytes)')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPCoeffSqrt.xs, labels=FLPCPCoeffSqrt.x_labels)
+        plt.tight_layout()
+        plt.legend()
+        fig.savefig(f'proof_size.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def query_complexity():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        flpcp = [4, 4, 4, 4, 4, 4]
+        flpcp_sqrt = [6, 10, 18, 34, 66, 130]
+        flpcp_coeff = [4, 4, 4, 4, 4, 4]
+        flpcp_coeff_sqrt = [6, 10, 18, 34, 66, 130]
+
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_sqrt, color='green', marker='s', label='Sqrt')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_coeff_sqrt, color='magenta', marker='v', label='Coefficient + Sqrt')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp, color='red', marker='o', label='Baseline')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_coeff, color='blue', marker='^', label='Coefficient')
+
+        plt.xlabel(r'Input vector length')
+        plt.ylabel('Query complexity')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPCoeffSqrt.xs, labels=FLPCPCoeffSqrt.x_labels)
+        plt.tight_layout()
+        plt.legend()
+        fig.savefig('query_complexity.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def prover_time():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        flpcp = [0.009600, 0.067500000, 3.111200000, 184.460500000, 12067.545000000, 741167.230300000]
+        flpcp_sqrt = [0.007800000, 0.028900000, 0.118600000, 1.071100000, 13.440900000, 194.183000000]
+        flpcp_precompute = [0.001700000, 0.005200000, 0.050000000, 0.735900000, 11.614400000, 189.302900000]
+        flpcp_coeff = [0.001400000, 0.001800000, 0.015100000, 0.220500000, 3.468100000, 54.619200000]
+        flpcp_sqrt_precomputed = [0.001900000, 0.003400000, 0.010400000, 0.063000000, 0.412400000, 3.087300000]
+        flpcp_coeff_sqrt = [0.001400000, 0.002700000, 0.004600000, 0.021000000, 0.131000000, 0.961800000]
+
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp, color='red', marker='o', label='Baseline')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_sqrt, color='green', marker='s', label='Sqrt')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_precompute, color='orange', marker='d', label='Baseline (precomputed)')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_coeff, color='blue', marker='^', label='Coefficient')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_sqrt_precomputed, color='purple', marker='*', label='Sqrt (precomputed)')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_coeff_sqrt, color='magenta', marker='v', label='Coefficient + Sqrt')
+
+        plt.xlabel(r'Input vector length')
+        plt.ylabel('Prover time (ms)')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPCoeffSqrt.xs, labels=FLPCPCoeffSqrt.x_labels)
+        plt.tight_layout()
+        plt.legend()
+        fig.savefig(f'prover_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def verifier_time():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        flpcp = [0.010600000, 0.091500000, 1.373100000, 21.071200000, 334.685600000, 5363.491900000]
+        flpcp_sqrt = [0.004900000, 0.017000000, 0.061300000, 0.324700000, 1.892400000, 13.300400000]
+        flpcp_coeff = [0.002300000, 0.005900000, 0.011500000, 0.046000000, 0.186000000, 0.755800000]
+        flpcp_coeff_sqrt = [0.002000000, 0.008800000, 0.026900000, 0.189700000, 1.311300000, 10.675500000]
+
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp, color='red', marker='o', label='Baseline')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_sqrt, color='green', marker='s', label='Sqrt')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_coeff_sqrt, color='magenta', marker='v', label='Coefficient + Sqrt')
+        ax.plot(FLPCPCoeffSqrt.xs, flpcp_coeff, color='blue', marker='^', label='Coefficient')
+
+        plt.xlabel(r'Input vector length')
+        plt.ylabel('Verifier time (ms)')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(ticks=FLPCPCoeffSqrt.xs, labels=FLPCPCoeffSqrt.x_labels)
+        plt.tight_layout()
+        plt.legend()
+        fig.savefig(f'verifier_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def plot():
+        ComparisonFLPCPMethods.proof_size()
+        ComparisonFLPCPMethods.query_complexity()
+        ComparisonFLPCPMethods.prover_time()
+        ComparisonFLPCPMethods.verifier_time()
 
 
 class FLIOP:
+    xs = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
+    x_labels = [fr'$2^{{{x}}}$' for x in range(2, 13)]
+
     @staticmethod
     def proof_size():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
-        proof_lengths = [40, 64, 88, 112, 136, 160, 184, 208, 232, 256]
-        predictions = [12 * math.log(x, 2) + 16 for x in xs]
+        proof_lengths = [80, 104, 128, 152, 176, 200, 224, 248, 272, 296, 320]
+        predictions = [24 * math.log(x, 2) + 32 for x in FLIOP.xs]
 
-        ax.plot(xs, proof_lengths, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\log{N}$')
+        ax.plot(FLIOP.xs, proof_lengths, color='red', marker='o', label='measurement')
+        ax.plot(FLIOP.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\log{N}$')
 
         plt.xlabel(r'Input vector length')
         plt.ylabel('Proof size (bytes)')
         plt.xscale('log')
-        plt.xticks(ticks=xs, labels=[r'$4^{1}$', r'$4^{2}$', r'$4^{3}$', r'$4^{4}$', r'$4^{5}$', r'$4^{6}$', r'$4^{7}$', r'$4^{8}$', r'$4^{9}$', r'$4^{10}$'])
+        plt.xticks(ticks=FLIOP.xs, labels=FLIOP.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLIOP_PROOF_SIZE.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'proof_size.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
     def query_complexity():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
-        ys = [6, 10, 14, 18, 22, 26, 30, 34, 38, 42]
-        predictions = [2 * math.log(x, 2) + 2 for x in xs]
+        ys = [6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26]
+        predictions = [2 * math.log(x, 2) + 2 for x in FLIOP.xs]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\log{N}$')
+        ax.plot(FLIOP.xs, ys, color='red', marker='o', label='measurement')
+        ax.plot(FLIOP.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\log{N}$')
 
         plt.xlabel(r'Input vector length')
         plt.ylabel('Query complexity')
         plt.xscale('log')
-        plt.xticks(ticks=xs, labels=[r'$4^{1}$', r'$4^{2}$', r'$4^{3}$', r'$4^{4}$', r'$4^{5}$', r'$4^{6}$', r'$4^{7}$',
-                                     r'$4^{8}$', r'$4^{9}$', r'$4^{10}$'])
+        plt.xticks(ticks=FLIOP.xs, labels=FLIOP.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLIOP_QUERY_COMPLEXITY.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'query_complexity.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
     def prover_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
-        ys = [0.007100, 0.016700000, 0.054200000, 0.223900000, 0.863800000, 3.443600000, 13.545900000, 54.558700000, 219.712600000, 878.400700000]
-        predictions = [(878.4007 / 1048576) * x for x in xs]
+        ys = [0.015600, 0.013700000, 0.027000000, 0.053300000, 0.164300000, 0.220100000, 0.427100000, 0.920300000, 1.789600000, 3.513800000, 7.552700000]
+        ys_oracle = [0.019400000, 0.015000000, 0.029100000, 0.057100000, 0.162300000, 0.234200000, 0.447500000, 0.884400000, 1.824900000, 3.587200000, 7.229200000]
+        poly = np.polyfit(FLIOP.xs, ys_oracle, 1)
+        predictions_oracle = [poly[0] * x + poly[1] for x in FLIOP.xs]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN$')
+        ax.plot(FLIOP.xs, ys, color='red', marker='o', label='baseline')
+        ax.plot(FLIOP.xs, ys_oracle, color='blue', marker='^', label='with random oracle')
+        ax.plot(FLIOP.xs, predictions_oracle, color='green', marker='s', linestyle='--', label=r'$cN$')
 
         plt.xlabel(r'Input vector length')
         plt.ylabel('Prover time (ms)')
         plt.xscale('log')
-        plt.xticks(ticks=xs, labels=[r'$4^{1}$', r'$4^{2}$', r'$4^{3}$', r'$4^{4}$', r'$4^{5}$', r'$4^{6}$', r'$4^{7}$',
-                                     r'$4^{8}$', r'$4^{9}$', r'$4^{10}$'])
+        plt.yscale('log')
+        plt.xticks(ticks=FLIOP.xs, labels=FLIOP.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLIOP_PROVER_TIME.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'prover_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
     def verifier_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
-        ys = [0.002200000, 0.002300000, 0.002200000, 0.002600000, 0.003600000, 0.004500000, 0.005900000, 0.009600000, 0.011700000, 0.014400000]
-        poly = np.polyfit([math.pow(x, 1. / 4) for x in xs], ys, 1)
-        predictions = [poly[0] * math.pow(x, 1. / 4) + poly[1] for x in xs]
+        ys = [0.005900000, 0.003300000, 0.003100000, 0.003400000, 0.003800000, 0.003700000, 0.004800000, 0.005000000, 0.005000000, 0.006100000, 0.008700000]
+        ys_oracle = [0.004800000, 0.003900000, 0.004000000, 0.004500000, 0.004800000, 0.005100000, 0.005600000, 0.006100000, 0.006900000, 0.007400000, 0.008000000]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\sqrt[4]{N}$')
+        ax.plot(FLIOP.xs, ys, color='red', marker='o', label='baseline')
+        ax.plot(FLIOP.xs, ys_oracle, color='blue', marker='^', label='with random oracle')
 
-        plt.xlabel(r'Input vector length')
+        plt.xlabel('Input vector length')
         plt.ylabel('Verifier time (ms)')
         plt.xscale('log')
-        plt.xticks(ticks=xs, labels=[r'$4^{1}$', r'$4^{2}$', r'$4^{3}$', r'$4^{4}$', r'$4^{5}$', r'$4^{6}$', r'$4^{7}$',
-                                     r'$4^{8}$', r'$4^{9}$', r'$4^{10}$'])
+        plt.xticks(ticks=FLIOP.xs, labels=FLIOP.x_labels)
         plt.legend()
         plt.tight_layout()
-        fig.savefig(f'FLIOP_VERIFIER_TIME.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'verifier_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
+
+    @staticmethod
+    def lan_time():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        ys = [0.105600000, 0.169760000, 0.233920000, 0.298080000, 0.362240000, 0.426400000, 0.490560000, 0.554720000, 0.618880000, 0.683040000, 0.747200000]
+        ys_oracle = [0.046640000, 0.050800000, 0.054960000, 0.059120000, 0.063280000, 0.067440000, 0.071600000, 0.075760000, 0.079920000, 0.084080000, 0.088240000]
+
+        ax.plot(FLIOP.xs, ys, color='red', marker='o', label='baseline')
+        ax.plot(FLIOP.xs, ys_oracle, color='blue', marker='^', label='with random oracle')
+
+        plt.xlabel(r'Input vector length')
+        plt.ylabel('Communication delay in LAN (ms)')
+        plt.xscale('log')
+        plt.xticks(ticks=FLIOP.xs, labels=FLIOP.x_labels)
+        plt.tight_layout()
+        plt.legend()
+        fig.savefig(f'lan_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def wan_time():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        ys = [140.400000000, 225.840000000, 311.280000000, 396.720000000, 482.160000000, 567.600000000, 653.040000000, 738.480000000, 823.920000000, 909.360000000, 994.800000000]
+        ys_oracle = [61.760000000, 67.200000000, 72.640000000, 78.080000000, 83.520000000, 88.960000000, 94.400000000, 99.840000000, 105.280000000, 110.720000000, 116.160000000]
+
+        ax.plot(FLIOP.xs, ys, color='red', marker='o', label='baseline')
+        ax.plot(FLIOP.xs, ys_oracle, color='blue', marker='^', label='with random oracle')
+
+        plt.xlabel('Input vector length')
+        plt.ylabel('Communication delay in WAN (ms)')
+        plt.xscale('log')
+        plt.xticks(ticks=FLIOP.xs, labels=FLIOP.x_labels)
+        plt.legend()
+        plt.tight_layout()
+        fig.savefig(f'wan_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def plot():
+        FLIOP.proof_size()
+        FLIOP.query_complexity()
+        FLIOP.prover_time()
+        FLIOP.verifier_time()
+        FLIOP.lan_time()
+        FLIOP.wan_time()
 
 
 class FLIOPCoeff:
+    xs = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
+    x_labels = [fr'$2^{{{x}}}$' for x in range(2, 13)]
+
     @staticmethod
     def proof_size():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
-        proof_lengths = [40, 64, 88, 112, 136, 160, 184, 208, 232, 256]
-        predictions = [12 * math.log(x, 2) + 16 for x in xs]
+        proof_lengths = [80, 104, 128, 152, 176, 200, 224, 248, 272, 296, 320]
+        predictions = [24 * math.log(x, 2) + 32 for x in FLIOPCoeff.xs]
 
-        ax.plot(xs, proof_lengths, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\log{N}$')
+        ax.plot(FLIOPCoeff.xs, proof_lengths, color='red', marker='o', label='measurement')
+        ax.plot(FLIOPCoeff.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\log{N}$')
 
         plt.xlabel(r'Input vector length')
         plt.ylabel('Proof size (bytes)')
         plt.xscale('log')
-        plt.xticks(ticks=xs, labels=[r'$4^{1}$', r'$4^{2}$', r'$4^{3}$', r'$4^{4}$', r'$4^{5}$', r'$4^{6}$', r'$4^{7}$',
-                                     r'$4^{8}$', r'$4^{9}$', r'$4^{10}$'])
+        plt.xticks(ticks=FLIOPCoeff.xs, labels=FLIOPCoeff.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLIOP_COEFF_PROOF_SIZE.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'proof_size.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
     def query_complexity():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
-        ys = [6, 10, 14, 18, 22, 26, 30, 34, 38, 42]
-        predictions = [2 * math.log(x, 2) + 2 for x in xs]
+        ys = [6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26]
+        predictions = [2 * math.log(x, 2) + 2 for x in FLIOPCoeff.xs]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\log{N}$')
+        ax.plot(FLIOPCoeff.xs, ys, color='red', marker='o', label='measurement')
+        ax.plot(FLIOPCoeff.xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\log{N}$')
 
         plt.xlabel(r'Input vector length')
         plt.ylabel('Query complexity')
         plt.xscale('log')
-        plt.xticks(ticks=xs, labels=[r'$4^{1}$', r'$4^{2}$', r'$4^{3}$', r'$4^{4}$', r'$4^{5}$', r'$4^{6}$', r'$4^{7}$',
-                                     r'$4^{8}$', r'$4^{9}$', r'$4^{10}$'])
+        plt.xticks(ticks=FLIOPCoeff.xs, labels=FLIOPCoeff.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLIOP_COEFF_QUERY_COMPLEXITY.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'query_complexity.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
     def prover_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
-        ys = [0.004000, 0.006500000, 0.021900000, 0.086300000, 0.309100000, 1.259800000, 4.689200000, 19.337500000, 76.263500000, 311.134800000]
-        poly = np.polyfit(xs, ys, 1)
-        predictions = [poly[0] * x + poly[1] for x in xs]
+        ys = [0.006700, 0.002900000, 0.004900000, 0.010800000, 0.023100000, 0.042000000, 0.080400000, 0.171600000, 0.408100000, 0.695500000, 1.336800000]
+        ys_oracle = [0.008300000, 0.004500000, 0.007500000, 0.015300000, 0.026700000, 0.052500000, 0.096500000, 0.190000000, 0.379600000, 0.774000000, 1.579300000]
+        poly = np.polyfit(FLIOPCoeff.xs, ys_oracle, 1)
+        predictions_oracle = [poly[0] * x + poly[1] for x in FLIOPCoeff.xs]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$cN$')
+        ax.plot(FLIOPCoeff.xs, ys, color='red', marker='o', label='coefficient')
+        ax.plot(FLIOPCoeff.xs, ys_oracle, color='blue', marker='^', label='with random oracle')
+        ax.plot(FLIOPCoeff.xs, predictions_oracle, color='green', marker='s', linestyle='--', label=r'$cN$')
 
         plt.xlabel(r'Input vector length')
         plt.ylabel('Prover time (ms)')
         plt.xscale('log')
-        plt.xticks(ticks=xs, labels=[r'$4^{1}$', r'$4^{2}$', r'$4^{3}$', r'$4^{4}$', r'$4^{5}$', r'$4^{6}$', r'$4^{7}$',
-                                     r'$4^{8}$', r'$4^{9}$', r'$4^{10}$'])
+        plt.yscale('log')
+        plt.xticks(ticks=FLIOPCoeff.xs, labels=FLIOPCoeff.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'FLIOP_COEFF_PROVER_TIME.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'prover_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
     def verifier_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
-        ys = [0.001500000, 0.001300000, 0.001200000, 0.001600000, 0.002000000, 0.002900000, 0.002800000, 0.006400000, 0.007300000, 0.009800000]
-        poly = np.polyfit([math.pow(x, 1. / 4) for x in xs], ys, 1)
-        predictions = [poly[0] * math.pow(x, 1. / 4) + poly[1] for x in xs]
+        ys = [0.004100000, 0.001300000, 0.001400000, 0.001400000, 0.001300000, 0.001500000, 0.002000000, 0.002600000, 0.003100000, 0.003500000, 0.003200000]
+        ys_oracle = [0.003300000, 0.001800000, 0.002100000, 0.002500000, 0.002700000, 0.003000000, 0.003500000, 0.003800000, 0.004200000, 0.004600000, 0.005400000]
 
-        ax.plot(xs, ys, color='red', marker='o', label='measurement')
-        ax.plot(xs, predictions, color='blue', marker='^', linestyle='--', label=r'$c\sqrt[4]{N}$')
+        ax.plot(FLIOPCoeff.xs, ys, color='red', marker='o', label='coefficient')
+        ax.plot(FLIOPCoeff.xs, ys_oracle, color='blue', marker='^', label='with random oracle')
 
-        plt.xlabel(r'Input vector length')
+        plt.xlabel('Input vector length')
         plt.ylabel('Verifier time (ms)')
         plt.xscale('log')
-        plt.xticks(ticks=xs, labels=[r'$4^{1}$', r'$4^{2}$', r'$4^{3}$', r'$4^{4}$', r'$4^{5}$', r'$4^{6}$', r'$4^{7}$',
-                                     r'$4^{8}$', r'$4^{9}$', r'$4^{10}$'])
-        plt.tight_layout()
+        plt.xticks(ticks=FLIOPCoeff.xs, labels=FLIOPCoeff.x_labels)
         plt.legend()
-        fig.savefig(f'FLIOP_COEFF_VERIFIER_TIME.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.tight_layout()
+        fig.savefig(f'verifier_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def compare_prover_time():
+    def lan_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
-        coeff = [0.004000, 0.006500000, 0.021900000, 0.086300000, 0.309100000, 1.259800000, 4.689200000, 19.337500000,
-              76.263500000, 311.134800000]
-        non_coeff = [0.007100, 0.016700000, 0.054200000, 0.223900000, 0.863800000, 3.443600000, 13.545900000, 54.558700000,
-              219.712600000, 878.400700000]
+        ys = [0.105600000, 0.169760000, 0.233920000, 0.298080000, 0.362240000, 0.426400000, 0.490560000, 0.554720000, 0.618880000, 0.683040000, 0.747200000]
+        ys_oracle = [0.046640000, 0.050800000, 0.054960000, 0.059120000, 0.063280000, 0.067440000, 0.071600000, 0.075760000, 0.079920000, 0.084080000, 0.088240000]
 
-        ax.plot(xs, non_coeff, color='red', marker='o', label='FLIOP')
-        ax.plot(xs, coeff, color='blue', marker='^', label='FLIOP Coefficient')
+        ax.plot(FLIOPCoeff.xs, ys, color='red', marker='o', label='coefficient')
+        ax.plot(FLIOPCoeff.xs, ys_oracle, color='blue', marker='^', label='with random oracle')
+
+        plt.xlabel(r'Input vector length')
+        plt.ylabel('Communication delay in LAN (ms)')
+        plt.xscale('log')
+        plt.xticks(ticks=FLIOPCoeff.xs, labels=FLIOPCoeff.x_labels)
+        plt.tight_layout()
+        plt.legend()
+        fig.savefig(f'lan_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def wan_time():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        ys = [140.400000000, 225.840000000, 311.280000000, 396.720000000, 482.160000000, 567.600000000, 653.040000000, 738.480000000, 823.920000000, 909.360000000, 994.800000000]
+        ys_oracle = [61.760000000, 67.200000000, 72.640000000, 78.080000000, 83.520000000, 88.960000000, 94.400000000, 99.840000000, 105.280000000, 110.720000000, 116.160000000]
+
+        ax.plot(FLIOPCoeff.xs, ys, color='red', marker='o', label='coefficient')
+        ax.plot(FLIOPCoeff.xs, ys_oracle, color='blue', marker='^', label='with random oracle')
+
+        plt.xlabel('Input vector length')
+        plt.ylabel('Communication delay in WAN (ms)')
+        plt.xscale('log')
+        plt.xticks(ticks=FLIOPCoeff.xs, labels=FLIOPCoeff.x_labels)
+        plt.legend()
+        plt.tight_layout()
+        fig.savefig(f'wan_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def plot():
+        FLIOPCoeff.proof_size()
+        FLIOPCoeff.query_complexity()
+        FLIOPCoeff.prover_time()
+        FLIOPCoeff.verifier_time()
+        FLIOPCoeff.lan_time()
+        FLIOPCoeff.wan_time()
+
+
+class ComparisonFLIOPMethods:
+    xs = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
+    x_labels = [fr'$2^{{{x}}}$' for x in range(2, 13)]
+
+    @staticmethod
+    def prover_time():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        ys = [0.015600, 0.013700000, 0.027000000, 0.053300000, 0.164300000, 0.220100000, 0.427100000, 0.920300000,
+              1.789600000, 3.513800000, 7.552700000]
+        ys_oracle = [0.019400000, 0.015000000, 0.029100000, 0.057100000, 0.162300000, 0.234200000, 0.447500000,
+                     0.884400000, 1.824900000, 3.587200000, 7.229200000]
+        coeff = [0.006700, 0.002900000, 0.004900000, 0.010800000, 0.023100000, 0.042000000, 0.080400000, 0.171600000, 0.408100000, 0.695500000, 1.336800000]
+        coeff_oracle = [0.008300000, 0.004500000, 0.007500000, 0.015300000, 0.026700000, 0.052500000, 0.096500000, 0.190000000, 0.379600000, 0.774000000, 1.579300000]
+
+        ax.plot(FLIOPCoeff.xs, ys_oracle, color='blue', marker='^', label='Baseline + Random oracle')
+        ax.plot(FLIOPCoeff.xs, ys, color='red', marker='o', label='Baseline')
+        ax.plot(FLIOPCoeff.xs, coeff_oracle, color='magenta', marker='v', label='Coefficient + Random oracle')
+        ax.plot(FLIOPCoeff.xs, coeff, color='green', marker='s', label='Coefficient')
 
         plt.xlabel(r'Input vector length')
         plt.ylabel('Prover time (ms)')
         plt.xscale('log')
-        plt.xticks(ticks=xs, labels=[r'$4^{1}$', r'$4^{2}$', r'$4^{3}$', r'$4^{4}$', r'$4^{5}$', r'$4^{6}$', r'$4^{7}$',
-                                     r'$4^{8}$', r'$4^{9}$', r'$4^{10}$'])
+        plt.yscale('log')
+        plt.xticks(ticks=FLIOPCoeff.xs, labels=FLIOPCoeff.x_labels)
         plt.tight_layout()
         plt.legend()
-        fig.savefig(f'COMPARE_PROVER_TIME_FLIOP.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        fig.savefig(f'prover_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
     @staticmethod
-    def compare_verifier_time():
+    def verifier_time():
         fig, ax = plt.subplots(figsize=(5, 4))
 
-        xs = [4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
-        coeff = [0.001500000, 0.001300000, 0.001200000, 0.001600000, 0.002000000, 0.002900000, 0.002800000, 0.006400000,
-              0.007300000, 0.009800000]
-        non_coeff = [0.002200000, 0.002300000, 0.002200000, 0.002600000, 0.003600000, 0.004500000, 0.005900000, 0.009600000,
-              0.011700000, 0.014400000]
+        ys = [0.005900000, 0.003300000, 0.003100000, 0.003400000, 0.003800000, 0.003700000, 0.004800000, 0.005000000,
+              0.005000000, 0.006100000, 0.008700000]
+        ys_oracle = [0.004800000, 0.003900000, 0.004000000, 0.004500000, 0.004800000, 0.005100000, 0.005600000,
+                     0.006100000, 0.006900000, 0.007400000, 0.008000000]
+        coeff = [0.004100000, 0.001300000, 0.001400000, 0.001400000, 0.001300000, 0.001500000, 0.002000000, 0.002600000, 0.003100000, 0.003500000, 0.003200000]
+        coeff_oracle = [0.003300000, 0.001800000, 0.002100000, 0.002500000, 0.002700000, 0.003000000, 0.003500000, 0.003800000, 0.004200000, 0.004600000, 0.005400000]
 
-        ax.plot(xs, non_coeff, color='red', marker='o', label='FLIOP')
-        ax.plot(xs, coeff, color='blue', marker='^', label='FLIOP Coefficient')
+        ax.plot(FLIOPCoeff.xs, ys_oracle, color='blue', marker='^', label='Baseline + Random oracle')
+        ax.plot(FLIOPCoeff.xs, ys, color='red', marker='o', label='Baseline')
+        ax.plot(FLIOPCoeff.xs, coeff_oracle, color='magenta', marker='v', label='Coefficient + Random oracle')
+        ax.plot(FLIOPCoeff.xs, coeff, color='green', marker='s', label='Coefficient')
 
-        plt.xlabel(r'Input vector length')
+        plt.xlabel('Input vector length')
         plt.ylabel('Verifier time (ms)')
         plt.xscale('log')
-        plt.xticks(ticks=xs, labels=[r'$4^{1}$', r'$4^{2}$', r'$4^{3}$', r'$4^{4}$', r'$4^{5}$', r'$4^{6}$', r'$4^{7}$',
-                                     r'$4^{8}$', r'$4^{9}$', r'$4^{10}$'])
-        plt.tight_layout()
+        plt.xticks(ticks=FLIOPCoeff.xs, labels=FLIOPCoeff.x_labels)
         plt.legend()
-        fig.savefig(f'COMPARE_VERIFIER_TIME_FLIOP.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.tight_layout()
+        fig.savefig(f'verifier_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
+
+    @staticmethod
+    def plot():
+        ComparisonFLIOPMethods.prover_time()
+        ComparisonFLIOPMethods.verifier_time()
+
 
 def wan():
     fig, ax = plt.subplots(figsize=(5, 4))
@@ -679,54 +878,17 @@ def lan():
 
 
 if __name__ == '__main__':
-    # FLPCP
-    FLPCP.flpcp_proof_size()
-    FLPCP.flpcp_query_complexity()
-    FLPCP.flpcp_prover_time()
-    FLPCP.flpcp_verifier_time()
+    ComparisonFLIOPMethods.plot()
 
 def a():
-    # FLPCPCoeff
-    FLPCPCoeff.flpcp_proof_size()
-    FLPCPCoeff.flpcp_query_complexity()
-    FLPCPCoeff.flpcp_prover_time()
-    FLPCPCoeff.flpcp_verifier_time()
-
-    # FLPCP vs FLPCP Coeff.
-    FLPCPCoeff.compare_prover_time()
-    FLPCPCoeff.compare_verifier_time()
-
-    # FLPCP Sqrt.
-    FLPCPSqrt.flpcp_proof_size()
-    FLPCPSqrt.flpcp_query_complexity()
-    FLPCPSqrt.flpcp_prover_time()
-    FLPCPSqrt.flpcp_verifier_time()
-
-    # FLPCPCoeff Sqrt.
-    FLPCPCoeffSqrt.flpcp_coeff_proof_size()
-    FLPCPCoeffSqrt.flpcp_coeff_query_complexity()
-    FLPCPCoeffSqrt.flpcp_coeff_prover_time()
-    FLPCPCoeffSqrt.flpcp_coeff_verifier_time()
-
-    # FLPCP Sqrt. vs FLPCPCoeff Sqrt.
-    FLPCPCoeffSqrt.compare_prover_time()
-    FLPCPCoeffSqrt.compare_verifier_time()
-
-    # FLIOP
-    FLIOP.proof_size()
-    FLIOP.query_complexity()
-    FLIOP.prover_time()
-    FLIOP.verifier_time()
-
-    # FLIOPCoeff
-    FLIOPCoeff.proof_size()
-    FLIOPCoeff.query_complexity()
-    FLIOPCoeff.prover_time()
-    FLIOPCoeff.verifier_time()
-
-    # FLIOP vs FLIOPCoeff
-    FLIOPCoeff.compare_prover_time()
-    FLIOPCoeff.compare_verifier_time()
+    FLPCP.plot()
+    FLPCPCoeff.plot()
+    FLPCPSqrt.plot()
+    FLPCPCoeffSqrt.plot()
+    ComparisonFLPCPMethods.plot()
+    FLIOP.plot()
+    FLIOPCoeff.plot()
+    ComparisonFLIOPMethods.plot()
 
     # Network Simulation
     lan()

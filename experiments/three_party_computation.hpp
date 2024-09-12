@@ -8,6 +8,7 @@
 #include <iostream>
 #include <vector>
 
+#include "network.hpp"
 #include "..\circuit\inner_product_circuit.hpp"
 #include "..\unit\proof.hpp"
 
@@ -32,26 +33,12 @@ public:
     static void FindBestFLIOPCoefficientSchedule(const size_t inputLength, const size_t maxLambda);
 
 private:
-    static double GetLANDelay(size_t payloadBytes);
-    static double GetWANDelay(size_t payloadBytes);
     static OneRoundMeasurement SimulateFLIOPOneRound(size_t inputLength, size_t compressFactor);
     static OneRoundMeasurement SimulateFLIOPCoefficientOneRound(size_t inputLength, size_t compressFactor);
     static BestSchedule FindBestFLIOPScheduleRecursive(const size_t inputLength, double* totalTimes,
                                                        const size_t maxLambda, const size_t maxLength);
     static double FindFLIOPDelayRecursive(const size_t inputLength, double* totalTimes, const size_t maxLength);
 };
-
-using namespace std;
-
-template <typename Int> double ThreePC<Int>::GetLANDelay(size_t payloadBytes)
-{
-    return 0.3 * 1e+5 + 1.3 * 1e+2 * payloadBytes;
-}
-
-template <typename Int> double ThreePC<Int>::GetWANDelay(size_t payloadBytes)
-{
-    return 0.4 * 1e+8 + 1.7 * 1e+5 * payloadBytes;
-}
 
 template <typename Int>
 OneRoundMeasurement ThreePC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t compressFactor)
@@ -83,11 +70,11 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPOneRound(size_t inputLength, size
 
         // Communication
         // Prover send two shares of proof to two verifiers respectively.
-        LANTime += GetLANDelay(proof.GetBytes());
-        WANTime += GetWANDelay(proof.GetBytes());
+        LANTime += Network::GetLANDelay(proof.GetBytes());
+        WANTime += Network::GetWANDelay(proof.GetBytes());
         // Exchange random value between verifiers.
-        LANTime += 2u * GetLANDelay(sizeof(Int));
-        WANTime += 2u * GetWANDelay(sizeof(Int));
+        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
+        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
 
         // Verifier 1
         auto startVerifier = chrono::high_resolution_clock::now();
@@ -101,8 +88,8 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPOneRound(size_t inputLength, size
         Int outShare1 = proofShares[1].GetQueryAnswer(queries[0]) - out1;
 
         // Communication - Verifiers send their own shares of 'out' value.
-        LANTime += 2u * GetLANDelay(sizeof(Int));
-        WANTime += 2u * GetWANDelay(sizeof(Int));
+        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
+        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
 
         // Verifier 1
         startVerifier = chrono::high_resolution_clock::now();
@@ -131,8 +118,8 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPOneRound(size_t inputLength, size
         out1 = proofShares[1].GetQueryAnswer(queries[1]);
 
         // Communication - Verifier sends random value to prover.
-        LANTime += GetLANDelay(sizeof(Int));
-        WANTime += GetWANDelay(sizeof(Int));
+        LANTime += Network::GetLANDelay(sizeof(Int));
+        WANTime += Network::GetWANDelay(sizeof(Int));
 
         // Prover
         startProver = chrono::high_resolution_clock::now();
@@ -152,11 +139,11 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPOneRound(size_t inputLength, size
 
         // Communication
         // Prover send two shares of proof to two verifiers respectively.
-        LANTime += GetLANDelay(proof.GetBytes());
-        WANTime += GetWANDelay(proof.GetBytes());
+        LANTime += Network::GetLANDelay(proof.GetBytes());
+        WANTime += Network::GetWANDelay(proof.GetBytes());
         // Exchange random value between verifiers.
-        LANTime += 2u * GetLANDelay(sizeof(Int));
-        WANTime += 2u * GetWANDelay(sizeof(Int));
+        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
+        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
 
         std::vector<Int> randomsInConstantTerms = proof.GetRandoms(2);
 
@@ -193,8 +180,8 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPOneRound(size_t inputLength, size
         Int resultShare1 = proofShares[1].GetQueryAnswer(queries[queries.size() - 1u]) - out1;
 
         // Communication - Verifiers share their pR, qR, res0, res1, var0, var1
-        LANTime += 2u * GetLANDelay(3 * sizeof(Int));
-        WANTime += 2u * GetWANDelay(3 * sizeof(Int));
+        LANTime += 2u * Network::GetLANDelay(3 * sizeof(Int));
+        WANTime += 2u * Network::GetWANDelay(3 * sizeof(Int));
 
         // Verifiers
         start = chrono::high_resolution_clock::now();
@@ -242,11 +229,11 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputL
 
         // Communication
         // Prover send two shares of proof to two verifiers respectively.
-        LANTime += GetLANDelay(proof.GetBytes());
-        WANTime += GetWANDelay(proof.GetBytes());
+        LANTime += Network::GetLANDelay(proof.GetBytes());
+        WANTime += Network::GetWANDelay(proof.GetBytes());
         // Exchange random value between verifiers.
-        LANTime += 2u * GetLANDelay(sizeof(Int));
-        WANTime += 2u * GetWANDelay(sizeof(Int));
+        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
+        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
 
         // Verifier 1
         auto start_verifier = chrono::high_resolution_clock::now();
@@ -260,8 +247,8 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputL
         Int outShare1 = proofShares[1].GetQueryAnswer(queries[0]) - out1;
 
         // Communication - Verifiers send their own shares of 'out' value.
-        LANTime += 2u * GetLANDelay(sizeof(Int));
-        WANTime += 2u * GetWANDelay(sizeof(Int));
+        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
+        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
 
         // Verifier 1
         start_verifier = chrono::high_resolution_clock::now();
@@ -289,8 +276,8 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputL
         out1 = proofShares[1].GetQueryAnswer(queries[1]);
 
         // Communication - Verifier sends random value to prover.
-        LANTime += GetLANDelay(sizeof(Int));
-        WANTime += GetWANDelay(sizeof(Int));
+        LANTime += Network::GetLANDelay(sizeof(Int));
+        WANTime += Network::GetWANDelay(sizeof(Int));
 
         // Prover
         start_prover = chrono::high_resolution_clock::now();
@@ -310,11 +297,11 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputL
 
         // Communication
         // Prover send two shares of proof to two verifiers respectively.
-        LANTime += GetLANDelay(proof.GetBytes());
-        WANTime += GetWANDelay(proof.GetBytes());
+        LANTime += Network::GetLANDelay(proof.GetBytes());
+        WANTime += Network::GetWANDelay(proof.GetBytes());
         // Exchange random value between verifiers.
-        LANTime += 2u * GetLANDelay(sizeof(Int));
-        WANTime += 2u * GetWANDelay(sizeof(Int));
+        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
+        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
 
         std::vector<Int> randomsInConstantTerms = proof.GetRandoms(2);
 
@@ -355,8 +342,8 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputL
         Int resultShare1 = proofShares[1].GetQueryAnswer(queries[queries.size() - 1u]) - out1;
 
         // Communication - Verifiers share their pR, qR, res0, res1, var0, var1
-        LANTime += 2u * GetLANDelay(3 * sizeof(Int));
-        WANTime += 2u * GetWANDelay(3 * sizeof(Int));
+        LANTime += 2u * Network::GetLANDelay(3 * sizeof(Int));
+        WANTime += 2u * Network::GetWANDelay(3 * sizeof(Int));
 
         // Verifiers
         start = chrono::high_resolution_clock::now();

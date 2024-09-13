@@ -2,6 +2,8 @@ import math
 
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.legend_handler import HandlerTuple
+
 
 class FLPCP:
     xs = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
@@ -552,9 +554,18 @@ class FLIOP:
         poly = np.polyfit(FLIOP.xs, ys_oracle, 1)
         predictions_oracle = [poly[0] * x + poly[1] for x in FLIOP.xs]
 
-        ax.plot(FLIOP.xs, ys, color='red', marker='o', label='baseline')
-        ax.plot(FLIOP.xs, ys_oracle, color='blue', marker='^', label='with random oracle')
-        ax.plot(FLIOP.xs, predictions_oracle, color='green', marker='s', linestyle='--', label=r'$cN$')
+        ys_precompute = [0.007000, 0.005600000, 0.008000000, 0.015800000, 0.026400000, 0.049900000, 0.090300000,
+                         0.178100000, 0.383200000, 0.735900000, 1.499800000]
+        ys_oracle_precompute = [0.009300, 0.006600000, 0.010300000, 0.019200000, 0.033800000, 0.060000000, 0.110600000, 0.209400000, 0.425800000, 0.826300000, 1.668900000]
+        poly = np.polyfit(FLIOP.xs, ys_oracle_precompute, 1)
+        predictions_oracle_precomputed = [poly[0] * x + poly[1] for x in FLIOP.xs]
+
+        p1, = ax.plot(FLIOP.xs, ys, color='red', marker='o', label='baseline')
+        p2, = ax.plot(FLIOP.xs, ys_oracle, color='blue', marker='^', label='with random oracle')
+        p3, = ax.plot(FLIOP.xs, predictions_oracle, color='green', marker='s', linestyle='--', label=r'$cN$')
+        p4, = ax.plot(FLIOP.xs, ys_oracle_precompute, color='magenta', marker='v', label='random oracle (precomputed)')
+        p5, = ax.plot(FLIOP.xs, ys_precompute, color='orange', marker='d', label='baseline (precomputed)')
+        p6, = ax.plot(FLIOP.xs, predictions_oracle_precomputed, color='purple', marker='*', linestyle='--', label=r'$c\'N$')
 
         plt.xlabel(r'Input vector length')
         plt.ylabel('Prover time (ms)')
@@ -779,10 +790,17 @@ class ComparisonFLIOPMethods:
                      0.884400000, 1.824900000, 3.587200000, 7.229200000]
         coeff = [0.006700, 0.002900000, 0.004900000, 0.010800000, 0.023100000, 0.042000000, 0.080400000, 0.171600000, 0.408100000, 0.695500000, 1.336800000]
         coeff_oracle = [0.008300000, 0.004500000, 0.007500000, 0.015300000, 0.026700000, 0.052500000, 0.096500000, 0.190000000, 0.379600000, 0.774000000, 1.579300000]
+        ys_precompute = [0.007000, 0.005600000, 0.008000000, 0.015800000, 0.026400000, 0.049900000, 0.090300000,
+                         0.178100000, 0.383200000, 0.735900000, 1.499800000]
+        ys_oracle_precompute = [0.009300, 0.006600000, 0.010300000, 0.019200000, 0.033800000, 0.060000000, 0.110600000,
+                                0.209400000, 0.425800000, 0.826300000, 1.668900000]
 
         ax.plot(FLIOPCoeff.xs, ys_oracle, color='blue', marker='^', label='Baseline + Random oracle')
         ax.plot(FLIOPCoeff.xs, ys, color='red', marker='o', label='Baseline')
+        ax.plot(FLIOPCoeff.xs, ys_oracle_precompute, color='purple', marker='*',
+                label='Baseline + Random oracle (Precomputed)')
         ax.plot(FLIOPCoeff.xs, coeff_oracle, color='magenta', marker='v', label='Coefficient + Random oracle')
+        ax.plot(FLIOPCoeff.xs, ys_precompute, color='orange', marker='d', label='Baseline (Precomputed)')
         ax.plot(FLIOPCoeff.xs, coeff, color='green', marker='s', label='Coefficient')
 
         plt.xlabel(r'Input vector length')
@@ -791,7 +809,7 @@ class ComparisonFLIOPMethods:
         plt.yscale('log')
         plt.xticks(ticks=FLIOPCoeff.xs, labels=FLIOPCoeff.x_labels)
         plt.tight_layout()
-        plt.legend()
+        plt.legend(prop={'size': 8})
         fig.savefig(f'prover_time.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
         plt.show()
 
@@ -826,61 +844,126 @@ class ComparisonFLIOPMethods:
         ComparisonFLIOPMethods.verifier_time()
 
 
-def wan():
-    fig, ax = plt.subplots(figsize=(5, 4))
+class ComparisonFLIOPWithNetwork:
 
-    xs = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    @staticmethod
+    def wan():
+        fig, ax = plt.subplots(figsize=(5, 4))
 
-    y0 = [210.210900000, 455.654700000, 701.100500000, 946.551100000, 1192.010300000, 1437.487300000, 1682.999500000, 1928.590700000, 2174.326900000, 2420.351300000]
-    y1 = [210.205900000, 455.647800000, 701.091600000, 946.535700000, 1191.981700000, 1437.433200000, 1682.893000000, 1928.371200000, 2173.889200000, 2419.495200000]
-    y2 = [210.210900000, 455.654700000, 458.377700000, 463.833700000, 474.817300000, 497.361600000, 717.598500000, 727.460600000, 741.247800000, 764.176700000]
-    y3 = [210.205900000, 455.647800000, 458.367800000, 463.808600000, 474.691000000, 496.456000000, 717.419600000, 726.950800000, 739.213800000, 758.304400000]
+        xs = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 
-    ax.plot(xs, y0, color='red', marker='o', label='FLIOP')
-    ax.plot(xs, y1, color='blue', marker='v', label='FLIOP Coeff.')
-    ax.plot(xs, y2, color='green', marker='s', label='FLIOP Optimum')
-    ax.plot(xs, y3, color='magenta', marker='^', label='FLIOP Coeff. Optimum')
+        y0 = [210.210900000, 455.654700000, 701.100500000, 946.551100000, 1192.010300000, 1437.487300000, 1682.999500000, 1928.590700000, 2174.326900000, 2420.351300000]
+        y1 = [210.205900000, 455.647800000, 701.091600000, 946.535700000, 1191.981700000, 1437.433200000, 1682.893000000, 1928.371200000, 2173.889200000, 2419.495200000]
+        y2 = [210.210900000, 455.654700000, 458.377700000, 463.833700000, 474.817300000, 497.361600000, 717.598500000, 727.460600000, 741.247800000, 764.176700000]
+        y3 = [210.205900000, 455.647800000, 458.367800000, 463.808600000, 474.691000000, 496.456000000, 717.419600000, 726.950800000, 739.213800000, 758.304400000]
 
-    plt.xlabel('Input vector length')
-    plt.ylabel('Total time (ms)')
-    plt.xscale('log')
-    plt.xticks(ticks=xs, labels=[r'$2^1$', r'$2^2$', r'$2^3$', r'$2^4$', r'$2^5$', r'$2^6$', r'$2^7$', r'$2^8$', r'$2^9$', r'$2^{10}$'])
-    plt.legend()
-    plt.tight_layout()
-    fig.savefig(f'FLIOP_WAN.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
-    plt.show()
+        ax.plot(xs, y0, color='red', marker='o', label='FLIOP')
+        ax.plot(xs, y1, color='blue', marker='v', label='FLIOP Coeff.')
+        ax.plot(xs, y2, color='green', marker='s', label='FLIOP Optimum')
+        ax.plot(xs, y3, color='magenta', marker='^', label='FLIOP Coeff. Optimum')
+
+        plt.xlabel('Input vector length')
+        plt.ylabel('Total time (ms)')
+        plt.xscale('log')
+        plt.xticks(ticks=xs, labels=[r'$2^1$', r'$2^2$', r'$2^3$', r'$2^4$', r'$2^5$', r'$2^6$', r'$2^7$', r'$2^8$', r'$2^9$', r'$2^{10}$'])
+        plt.legend()
+        plt.tight_layout()
+        fig.savefig(f'FLIOP_WAN.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def lan():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        xs = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+
+        y0 = [0.168700000, 0.356660000, 0.546620000, 0.741380000, 0.944740000, 1.165900000, 1.422260000, 1.757620000, 2.237980000, 3.006540000]
+        y2 = [0.163700000, 0.349760000, 0.537720000, 0.725980000, 0.916140000, 1.111800000, 1.315760000, 1.538120000,
+              1.800280000, 2.150440000]
+        y1 = [0.168700000, 0.356660000, 0.361740000, 0.381900000, 0.493820000, 0.610940000, 0.718940000, 0.964380000, 1.237780000, 1.814020000]
+        y3 = [0.163700000, 0.349760000, 0.351840000, 0.356800000, 0.367520000, 0.389160000, 0.558200000, 0.576680000, 0.609040000, 0.674200000]
+
+        ax.plot(xs, y0, color='red', marker='o', label='FLIOP')
+        ax.plot(xs, y2, color='blue', marker='v', label='FLIOP Coeff.')
+        ax.plot(xs, y1, color='green', marker='s', label='FLIOP Optimum')
+        ax.plot(xs, y3, color='magenta', marker='^', label='FLIOP Coeff. Optimum')
+
+        plt.xlabel('Input vector length')
+        plt.ylabel('Total time (ms)')
+        plt.xscale('log')
+        plt.xticks(ticks=xs, labels=[r'$2^1$', r'$2^2$', r'$2^3$', r'$2^4$', r'$2^5$', r'$2^6$', r'$2^7$', r'$2^8$', r'$2^9$', r'$2^{10}$'])
+        plt.legend()
+        plt.tight_layout()
+        fig.savefig(f'FLIOP_LAN.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def plot():
+        ComparisonFLIOPWithNetwork.lan()
+        ComparisonFLIOPWithNetwork.wan()
 
 
-def lan():
-    fig, ax = plt.subplots(figsize=(5, 4))
+class ComparisonFLIOPWithNetworkPrecomputeOracle:
 
-    xs = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    @staticmethod
+    def wan():
+        fig, ax = plt.subplots(figsize=(5, 4))
 
-    y0 = [0.168700000, 0.356660000, 0.546620000, 0.741380000, 0.944740000, 1.165900000, 1.422260000, 1.757620000, 2.237980000, 3.006540000]
-    y2 = [0.163700000, 0.349760000, 0.537720000, 0.725980000, 0.916140000, 1.111800000, 1.315760000, 1.538120000,
-          1.800280000, 2.150440000]
-    y1 = [0.168700000, 0.356660000, 0.361740000, 0.381900000, 0.493820000, 0.610940000, 0.718940000, 0.964380000, 1.237780000, 1.814020000]
-    y3 = [0.163700000, 0.349760000, 0.351840000, 0.356800000, 0.367520000, 0.389160000, 0.558200000, 0.576680000, 0.609040000, 0.674200000]
+        xs = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 
-    ax.plot(xs, y0, color='red', marker='o', label='FLIOP')
-    ax.plot(xs, y2, color='blue', marker='v', label='FLIOP Coeff.')
-    ax.plot(xs, y1, color='green', marker='s', label='FLIOP Optimum')
-    ax.plot(xs, y3, color='magenta', marker='^', label='FLIOP Coeff. Optimum')
+        y0 = [97.696600000, 107.219600000, 116.743100000, 126.268500000, 135.796800000, 145.331000000, 154.878200000,
+              164.449700000, 174.072100000, 183.807800000]
+        y1 = [97.686700000, 107.209900000, 116.733800000, 126.258600000, 135.786000000, 145.318200000, 154.860200000, 164.422300000, 174.028700000, 183.723900000]
+        y2 = [97.696600000, 107.219600000, 112.660700000, 122.185000000, 127.628800000, 137.158200000, 142.612600000,
+              152.162700000, 157.669100000, 167.283900000]
+        y3 = [97.686700000, 107.209900000, 112.650900000, 122.174700000, 127.617600000, 137.144600000, 142.594400000, 152.133900000, 157.613100000, 167.203200000]
 
-    plt.xlabel('Input vector length')
-    plt.ylabel('Total time (ms)')
-    plt.xscale('log')
-    plt.xticks(ticks=xs, labels=[r'$2^1$', r'$2^2$', r'$2^3$', r'$2^4$', r'$2^5$', r'$2^6$', r'$2^7$', r'$2^8$', r'$2^9$', r'$2^{10}$'])
-    plt.legend()
-    plt.tight_layout()
-    fig.savefig(f'FLIOP_LAN.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
-    plt.show()
+        ax.plot(xs, y0, color='red', marker='o', label='FLIOP')
+        ax.plot(xs, y1, color='blue', marker='v', label='FLIOP Coeff.')
+        ax.plot(xs, y2, color='green', marker='s', label='FLIOP Optimum')
+        ax.plot(xs, y3, color='magenta', marker='^', label='FLIOP Coeff. Optimum')
+
+        plt.xlabel('Input vector length')
+        plt.ylabel('Total time (ms)')
+        plt.xscale('log')
+        plt.xticks(ticks=xs, labels=[r'$2^1$', r'$2^2$', r'$2^3$', r'$2^4$', r'$2^5$', r'$2^6$', r'$2^7$', r'$2^8$', r'$2^9$', r'$2^{10}$'])
+        plt.legend()
+        plt.tight_layout()
+        fig.savefig(f'WAN_precomputed_oracle.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def lan():
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        xs = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+
+        y0 = [0.090120000, 0.100400000, 0.111180000, 0.123860000, 0.139440000, 0.160920000, 0.195400000, 0.254180000, 0.363860000, 0.586840000]
+        y2 = [0.080220000, 0.090700000, 0.101880000, 0.113960000, 0.128640000, 0.148120000, 0.177400000, 0.226780000, 0.320460000, 0.502940000]
+        y1 = [0.090120000, 0.100400000, 0.105660000, 0.116680000, 0.125200000, 0.141020000, 0.160440000, 0.195360000, 0.254560000, 0.364500000]
+        y3 = [0.080220000, 0.090700000, 0.095860000, 0.104880000, 0.114000000, 0.124720000, 0.139540000, 0.161060000, 0.195280000, 0.259080000]
+
+        ax.plot(xs, y0, color='red', marker='o', label='FLIOP')
+        ax.plot(xs, y2, color='blue', marker='v', label='FLIOP Coeff.')
+        ax.plot(xs, y1, color='green', marker='s', label='FLIOP Optimum')
+        ax.plot(xs, y3, color='magenta', marker='^', label='FLIOP Coeff. Optimum')
+
+        plt.xlabel('Input vector length')
+        plt.ylabel('Total time (ms)')
+        plt.xscale('log')
+        plt.xticks(ticks=xs, labels=[r'$2^1$', r'$2^2$', r'$2^3$', r'$2^4$', r'$2^5$', r'$2^6$', r'$2^7$', r'$2^8$', r'$2^9$', r'$2^{10}$'])
+        plt.legend()
+        plt.tight_layout()
+        fig.savefig(f'LAN_precomputed_oracle.png', dpi=300, format='png', bbox_inches='tight', pad_inches=0.1, )
+        plt.show()
+
+    @staticmethod
+    def plot():
+        ComparisonFLIOPWithNetworkPrecomputeOracle.lan()
+        ComparisonFLIOPWithNetworkPrecomputeOracle.wan()
 
 
 if __name__ == '__main__':
-    ComparisonFLIOPMethods.plot()
-
-def a():
     FLPCP.plot()
     FLPCPCoeff.plot()
     FLPCPSqrt.plot()
@@ -889,7 +972,5 @@ def a():
     FLIOP.plot()
     FLIOPCoeff.plot()
     ComparisonFLIOPMethods.plot()
-
-    # Network Simulation
-    lan()
-    wan()
+    ComparisonFLIOPWithNetwork.plot()
+    ComparisonFLIOPWithNetworkPrecomputeOracle.plot()

@@ -55,6 +55,17 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPOneRound(size_t inputLength, size
     double LANTime = 0.;
     double WANTime = 0.;
 
+    // Precompute a Vandermonde matrix
+    Int* xs = new Int[compressFactor];
+    for (size_t i = 0; i < compressFactor; ++i)
+    {
+        xs[i] = Int(i);
+    }
+    SquareMatrix<Int> evalToCoeff = SquareMatrix<Int>::GetVandermonde(xs, compressFactor);
+    evalToCoeff.Inverse();
+    delete[] xs;
+    xs = (Int*)0;
+
     bool isValid = true;
     Int out0 = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), op0.size());
     Int out1 = Int(0u);
@@ -62,19 +73,19 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPOneRound(size_t inputLength, size
     {
         // Prover
         auto startProver = chrono::high_resolution_clock::now();
-        InteractiveProof<Int> proof =
-            InnerProductCircuit<Int>::MakeRoundProof(op0.data(), op1.data(), op0.size(), compressFactor);
+        InteractiveProof<Int> proof = InnerProductCircuit<Int>::MakeRoundProofWithPrecompute(
+            op0.data(), op1.data(), op0.size(), compressFactor, evalToCoeff);
         std::vector<Proof<Int>> proofShares = proof.GetShares(2);
         auto endProver = chrono::high_resolution_clock::now();
         proverTime += chrono::duration_cast<chrono::nanoseconds>(endProver - startProver).count();
 
         // Communication
         // Prover send two shares of proof to two verifiers respectively.
-        LANTime += Network::GetLANDelay(proof.GetBytes());
-        WANTime += Network::GetWANDelay(proof.GetBytes());
+        LANTime += Network::GetLANPayloadDelay(proof.GetBytes());
+        WANTime += Network::GetWANPayloadDelay(proof.GetBytes());
         // Exchange random value between verifiers.
-        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
-        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
+        LANTime += 2u * Network::GetLANPayloadDelay(sizeof(Int));
+        WANTime += 2u * Network::GetWANPayloadDelay(sizeof(Int));
 
         // Verifier 1
         auto startVerifier = chrono::high_resolution_clock::now();

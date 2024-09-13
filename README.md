@@ -216,7 +216,7 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
   </table>
 </div>
 
-## Network Simulation on Secret-Shared Data (3PC)
+## Network Simulation on 3PC
 
 ### LAN
 

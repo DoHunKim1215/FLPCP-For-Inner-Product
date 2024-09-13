@@ -42,9 +42,13 @@ public:
     static void ExperimentFLPCPCoefficient();
     static void ExperimentFLPCPCoefficientSqrt();
     static FLIOPMeasurement FLIOP(const size_t inputLength, const size_t compressFactor);
+    static FLIOPMeasurement FLIOPWithPrecompute(const size_t inputLength, const size_t compressFactor);
     static void ExperimentFLIOP();
+    static void ExperimentFLIOPWithPrecompute();
     static FLIOPMeasurement FLIOPWithRandomOracle(const size_t inputLength, const size_t compressFactor);
+    static FLIOPMeasurement FLIOPWithRandomOracleAndPrecompute(const size_t inputLength, const size_t compressFactor);
     static void ExperimentFLIOPWithRandomOracle();
+    static void ExperimentFLIOPWithRandomOracleAndPrecompute();
     static FLIOPMeasurement FLIOPCoefficient(const size_t inputLength, const size_t compressFactor);
     static void ExperimentFLIOPCoefficient();
     static FLIOPMeasurement FLIOPCoefficientWithRandomOracle(const size_t inputLength, const size_t compressFactor);
@@ -647,6 +651,111 @@ template <typename Int> FLIOPMeasurement TwoPC<Int>::FLIOP(const size_t inputLen
                             LANTime * 1e-6, WANTime * 1e-6, isValid);
 }
 
+template <typename Int> FLIOPMeasurement TwoPC<Int>::FLIOPWithPrecompute(const size_t inputLength, const size_t compressFactor)
+{
+    Int::SetSeed(10u);
+
+    std::vector<Int> op0(inputLength);
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
+    std::vector<Int> op1(inputLength);
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
+
+    double proverTime = 0.;
+    double verifierTime = 0.;
+    double LANTime = 0.;
+    double WANTime = 0.;
+    size_t totalProofSize = 0u;
+    size_t totalQueryComplexity = 0u;
+
+    // Precompute a Vandermonde matrix
+    Int* xs = new Int[compressFactor];
+    for (size_t i = 0; i < compressFactor; ++i)
+    {
+        xs[i] = Int(i);
+    }
+    SquareMatrix<Int> evalToCoeff = SquareMatrix<Int>::GetVandermonde(xs, compressFactor);
+    evalToCoeff.Inverse();
+    delete[] xs;
+    xs = (Int*)0;
+
+    bool isValid = true;
+    Int out = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), inputLength);
+    while (ceil(op0.size() / (double)compressFactor) > 1)
+    {
+        // Prover
+        auto start = std::chrono::high_resolution_clock::now();
+        InteractiveProof<Int> proof = InnerProductCircuit<Int>::MakeRoundProofWithPrecompute(
+            op0.data(), op1.data(), op0.size(), compressFactor, evalToCoeff);
+        auto end = std::chrono::high_resolution_clock::now();
+        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+        // Communication : Prover give the verifier a single round proof
+        LANTime += Network::GetLANDelay(proof.GetBytes());
+        WANTime += Network::GetWANDelay(proof.GetBytes());
+
+        // Verifier
+        start = std::chrono::high_resolution_clock::now();
+        Int random = Int::GenerateRandom();
+        std::vector<Query<Int>> roundQueries = InnerProductCircuit<Int>::MakeRoundQuery(random, compressFactor);
+        isValid = isValid && (out == proof.GetQueryAnswer(roundQueries[0]));
+        out = proof.GetQueryAnswer(roundQueries[1]);
+        end = std::chrono::high_resolution_clock::now();
+        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+        // Communication : Verifier give the prover a single round randomness
+        LANTime += Network::GetLANDelay(sizeof(Int));
+        WANTime += Network::GetWANDelay(sizeof(Int));
+
+        // Prover
+        start = std::chrono::high_resolution_clock::now();
+        op0 = proof.EvaluatePolyPs(random);
+        op1 = proof.EvaluatePolyQs(random);
+        end = std::chrono::high_resolution_clock::now();
+        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+        totalProofSize += proof.GetBytes();
+        totalQueryComplexity += 2;
+    }
+
+    // Prover
+    auto start = std::chrono::high_resolution_clock::now();
+    Proof<Int> proof = InnerProductCircuit<Int>::MakeProof(op0.data(), op1.data(), op0.size(), op0.size());
+    auto end = std::chrono::high_resolution_clock::now();
+    proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+    // Communication : Prover give the verifier a final round proof
+    LANTime += Network::GetLANDelay(op0.size() * 2 * sizeof(Int) + proof.GetBytes());
+    WANTime += Network::GetWANDelay(op0.size() * 2 * sizeof(Int) + proof.GetBytes());
+
+    // Verifier
+    start = std::chrono::high_resolution_clock::now();
+    std::vector<Query<Int>> queries =
+        InnerProductCircuit<Int>::MakeQuery(Int::GenerateRandom(), op0.size(), op0.size());
+    const size_t nInputQueriesHalf = (queries.size() - 2u) / 2u;
+    Int gR((uint64_t)0);
+    for (size_t i = 0; i < nInputQueriesHalf; ++i)
+    {
+        gR += proof.GetQueryAnswer(queries[i]) * proof.GetQueryAnswer(queries[i + nInputQueriesHalf]);
+    }
+    isValid = isValid && (proof.GetQueryAnswer(queries[queries.size() - 2u]) == gR) &&
+              (proof.GetQueryAnswer(queries[queries.size() - 1u]) == out);
+
+    end = std::chrono::high_resolution_clock::now();
+    verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+    totalProofSize += proof.GetBytes();
+    totalQueryComplexity += queries.size();
+
+    return FLIOPMeasurement(totalProofSize, totalQueryComplexity, proverTime * 1e-6, verifierTime * 1e-6,
+                            LANTime * 1e-6, WANTime * 1e-6, isValid);
+}
+
 template <typename Int> void TwoPC<Int>::ExperimentFLIOP()
 {
     size_t j = 0;
@@ -654,6 +763,70 @@ template <typename Int> void TwoPC<Int>::ExperimentFLIOP()
     for (size_t i = 4; i <= 4096; i *= 2)
     {
         measures[j] = TwoPC<Int>::FLIOP(i, 2);
+        if (!measures[j++].isVaild)
+        {
+            std::cout << "Invalid!" << std::endl;
+            return;
+        }
+    }
+
+    std::cout << "Vector Length : ";
+    for (size_t i = 4; i <= 4096; i *= 2)
+    {
+        std::cout << i << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Proof Length : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << measures[i].proofLength << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Query Complexity : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << measures[i].nQueries << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Prover Time : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << std::fixed << measures[i].proverTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Verifier Time : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << std::fixed << measures[i].verifierTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "LAN Time : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << std::fixed << measures[i].LANTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "WANTime : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << std::fixed << measures[i].WANTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+}
+
+template <typename Int> void TwoPC<Int>::ExperimentFLIOPWithPrecompute()
+{
+    size_t j = 0;
+    FLIOPMeasurement measures[11];
+    for (size_t i = 4; i <= 4096; i *= 2)
+    {
+        measures[j] = TwoPC<Int>::FLIOPWithPrecompute(i, 2);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;
@@ -796,6 +969,103 @@ template <typename Int> FLIOPMeasurement TwoPC<Int>::FLIOPWithRandomOracle(const
                             LANTime * 1e-6, WANTime * 1e-6, isValid);
 }
 
+template <typename Int>
+FLIOPMeasurement TwoPC<Int>::FLIOPWithRandomOracleAndPrecompute(const size_t inputLength, const size_t compressFactor)
+{
+    Int::SetSeed(10u);
+
+    std::vector<Int> op0(inputLength);
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
+    std::vector<Int> op1(inputLength);
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
+
+    bool isValid = true;
+    Int out = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), inputLength);
+
+    size_t totalProofSize = 0u;
+    size_t totalQueryComplexity = 0u;
+
+    const size_t nTotalRounds = (size_t)ceil(std::log2((double)op0.size()));
+    std::vector<InteractiveProof<Int>> interactiveProofs;
+    interactiveProofs.reserve(nTotalRounds);
+    std::vector<Int> randoms;
+    randoms.reserve(nTotalRounds);
+
+    // Precompute a Vandermonde matrix
+    Int* xs = new Int[compressFactor];
+    for (size_t i = 0; i < compressFactor; ++i)
+    {
+        xs[i] = Int(i);
+    }
+    SquareMatrix<Int> evalToCoeff = SquareMatrix<Int>::GetVandermonde(xs, compressFactor);
+    evalToCoeff.Inverse();
+    delete[] xs;
+    xs = (Int*)0;
+
+    // Prover
+    auto start = std::chrono::high_resolution_clock::now();
+    while (ceil(op0.size() / (double)compressFactor) > 1)
+    {
+        InteractiveProof<Int> proof =
+            InnerProductCircuit<Int>::MakeRoundProofWithPrecompute(op0.data(), op1.data(), op0.size(), compressFactor, evalToCoeff);
+        Int random = proof.GetRandomFromOracle();
+        op0 = proof.EvaluatePolyPs(random);
+        op1 = proof.EvaluatePolyQs(random);
+        interactiveProofs.emplace_back(proof);
+        randoms.push_back(random);
+
+        totalProofSize += proof.GetBytes();
+    }
+    Proof<Int> finalProof = InnerProductCircuit<Int>::MakeProof(op0.data(), op1.data(), op0.size(), op0.size());
+    auto end = std::chrono::high_resolution_clock::now();
+    double proverTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    totalProofSize += finalProof.GetBytes();
+
+    assert(interactiveProofs.size() == randoms.size());
+
+    // Communication
+    double LANTime = Network::GetLANDelay(totalProofSize + nTotalRounds * sizeof(Int) + op0.size() * 2 * sizeof(Int));
+    double WANTime = Network::GetWANDelay(totalProofSize + nTotalRounds * sizeof(Int) + op0.size() * 2 * sizeof(Int));
+
+    // Verifier
+    start = std::chrono::high_resolution_clock::now();
+    for (size_t i = 0; i < interactiveProofs.size(); ++i)
+    {
+        isValid = isValid && (randoms[i] == interactiveProofs[i].GetRandomFromOracle());
+
+        std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeRoundQuery(randoms[i], compressFactor);
+        isValid = isValid && (out == interactiveProofs[i].GetQueryAnswer(queries[0]));
+        out = interactiveProofs[i].GetQueryAnswer(queries[1]);
+
+        totalQueryComplexity += 2;
+    }
+
+    std::vector<Query<Int>> queries =
+        InnerProductCircuit<Int>::MakeQuery(Int::GenerateRandom(), op0.size(), op0.size());
+    const size_t nInputQueriesHalf = (queries.size() - 2u) / 2u;
+    Int gR((uint64_t)0);
+    for (size_t i = 0; i < nInputQueriesHalf; ++i)
+    {
+        gR += finalProof.GetQueryAnswer(queries[i]) * finalProof.GetQueryAnswer(queries[i + nInputQueriesHalf]);
+    }
+    isValid = isValid && (finalProof.GetQueryAnswer(queries[queries.size() - 2u]) == gR) &&
+              (finalProof.GetQueryAnswer(queries[queries.size() - 1u]) == out);
+
+    end = std::chrono::high_resolution_clock::now();
+    double verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+    totalQueryComplexity += queries.size();
+
+    return FLIOPMeasurement(totalProofSize, totalQueryComplexity, proverTime * 1e-6, verifierTime * 1e-6,
+                            LANTime * 1e-6, WANTime * 1e-6, isValid);
+}
+
 template <typename Int> void TwoPC<Int>::ExperimentFLIOPWithRandomOracle()
 {
     size_t j = 0;
@@ -803,6 +1073,70 @@ template <typename Int> void TwoPC<Int>::ExperimentFLIOPWithRandomOracle()
     for (size_t i = 4; i <= 4096; i *= 2)
     {
         measures[j] = TwoPC<Int>::FLIOPWithRandomOracle(i, 2);
+        if (!measures[j++].isVaild)
+        {
+            std::cout << "Invalid!" << std::endl;
+            return;
+        }
+    }
+
+    std::cout << "Vector Length : ";
+    for (size_t i = 4; i <= 4096; i *= 2)
+    {
+        std::cout << i << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Proof Length : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << measures[i].proofLength << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Query Complexity : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << measures[i].nQueries << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Prover Time : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << std::fixed << measures[i].proverTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Verifier Time : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << std::fixed << measures[i].verifierTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "LAN Time : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << std::fixed << measures[i].LANTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "WANTime : ";
+    for (size_t i = 0; i < 11; ++i)
+    {
+        std::cout << std::fixed << measures[i].WANTime << std::setprecision(9) << ", ";
+    }
+    std::cout << std::endl;
+}
+
+template <typename Int> void TwoPC<Int>::ExperimentFLIOPWithRandomOracleAndPrecompute()
+{
+    size_t j = 0;
+    FLIOPMeasurement measures[11];
+    for (size_t i = 4; i <= 4096; i *= 2)
+    {
+        measures[j] = TwoPC<Int>::FLIOPWithRandomOracleAndPrecompute(i, 2);
         if (!measures[j++].isVaild)
         {
             std::cout << "Invalid!" << std::endl;

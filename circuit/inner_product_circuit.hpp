@@ -21,6 +21,8 @@ public:
     static Proof<Int> MakeCoefficientProof(Int* op0, Int* op1, const size_t length, const size_t nPoly);
     static std::vector<Query<Int>> MakeCoefficientQuery(Int random, size_t inputSize, const size_t nPoly);
     static InteractiveProof<Int> MakeRoundProof(Int* op0, Int* op1, const size_t length, size_t subvectorSize);
+    static InteractiveProof<Int> MakeRoundProofWithPrecompute(Int* op0, Int* op1, const size_t length,
+                                                              size_t subvectorSize, SquareMatrix<Int>& evalToCoeff);
     static std::vector<Query<Int>> MakeRoundQuery(Int random, size_t subvectorSize);
     static InteractiveProof<Int> MakeRoundCoefficientProof(Int* op0, Int* op1, const size_t length,
                                                       size_t subvectorSize);
@@ -353,6 +355,42 @@ InteractiveProof<Int> InnerProductCircuit<Int>::MakeRoundProof(Int* op0, Int* op
         Polynomial<Int> poly0 = Polynomial<Int>::LagrangeInterpolation(resizedInput + subvectorSize * i, subvectorSize);
         Polynomial<Int> poly1 =
             Polynomial<Int>::LagrangeInterpolation(resizedInput + subvectorSize * (nPoly + i), subvectorSize);
+        gPoly += poly0 * poly1;
+        poly0s.emplace_back(poly0);
+        poly1s.emplace_back(poly1);
+    }
+
+    delete[] resizedInput;
+
+    return InteractiveProof<Int>(poly0s, poly1s, gPoly);
+}
+
+template <typename Int>
+InteractiveProof<Int> InnerProductCircuit<Int>::MakeRoundProofWithPrecompute(Int* op0, Int* op1, const size_t length,
+                                                               size_t subvectorSize, SquareMatrix<Int>& evalToCoeff)
+{
+    assert(length > 0);
+
+    const size_t nPoly = ceil(length / (double)subvectorSize);
+
+    assert(nPoly > 1);
+
+    Int* const resizedInput = new Int[nPoly * subvectorSize * 2u];
+    std::memset(resizedInput, 0, (nPoly * subvectorSize * 2u) * sizeof(Int));
+    std::memcpy(resizedInput, op0, length * sizeof(Int));
+    std::memcpy(resizedInput + nPoly * subvectorSize, op1, length * sizeof(Int));
+
+    Polynomial<Int> gPoly;
+    std::vector<Polynomial<Int>> poly0s;
+    poly0s.reserve(nPoly);
+    std::vector<Polynomial<Int>> poly1s;
+    poly1s.reserve(nPoly);
+    for (size_t i = 0; i < nPoly; ++i)
+    {
+        Polynomial<Int> poly0 =
+            Polynomial<Int>::VandermondeInterpolation(resizedInput + subvectorSize * i, subvectorSize, evalToCoeff);
+        Polynomial<Int> poly1 = Polynomial<Int>::VandermondeInterpolation(resizedInput + subvectorSize * (nPoly + i),
+                                                                          subvectorSize, evalToCoeff);
         gPoly += poly0 * poly1;
         poly0s.emplace_back(poly0);
         poly1s.emplace_back(poly1);

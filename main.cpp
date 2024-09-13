@@ -5,8 +5,7 @@
 
 int main(int argc, char* argv[])
 {
-    TwoPC<Mpint64>::ExperimentFLIOPCoefficient();
-    TwoPC<Mpint64>::ExperimentFLIOPCoefficientWithRandomOracle();
+    TwoPC<Mpint64>::ExperimentFLIOPWithRandomOracleAndPrecompute();
     
     system("pause");
     return 0;

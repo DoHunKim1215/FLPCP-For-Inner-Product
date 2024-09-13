@@ -46,65 +46,93 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPOneRound(size_t inputLength, size
     Int::SetSeed(10u);
 
     std::vector<Int> op0(inputLength);
-    std::fill(op0.begin(), op0.end(), Int(0u));
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
     std::vector<Int> op1(inputLength);
-    std::fill(op1.begin(), op1.end(), Int(0u));
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
 
     double proverTime = 0.;
     double verifierTime = 0.;
     double LANTime = 0.;
     double WANTime = 0.;
 
-    // Precompute a Vandermonde matrix
-    Int* xs = new Int[compressFactor];
-    for (size_t i = 0; i < compressFactor; ++i)
-    {
-        xs[i] = Int(i);
-    }
-    SquareMatrix<Int> evalToCoeff = SquareMatrix<Int>::GetVandermonde(xs, compressFactor);
-    evalToCoeff.Inverse();
-    delete[] xs;
-    xs = (Int*)0;
+    unsigned char secretKey[64] = {0};
 
     bool isValid = true;
     Int out0 = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), op0.size());
-    Int out1 = Int(0u);
+    Int out1 = Int((uint64_t)0);
     if (ceil(op0.size() / (double)compressFactor) > 1)
     {
+        // Precompute a Vandermonde matrix
+        Int* xs = new Int[compressFactor];
+        for (size_t i = 0; i < compressFactor; ++i)
+        {
+            xs[i] = Int(i);
+        }
+        SquareMatrix<Int> evalToCoeff = SquareMatrix<Int>::GetVandermonde(xs, compressFactor);
+        evalToCoeff.Inverse();
+        delete[] xs;
+        xs = (Int*)0;
+
+
         // Prover
-        auto startProver = chrono::high_resolution_clock::now();
+        auto start = std::chrono::high_resolution_clock::now();
         InteractiveProof<Int> proof = InnerProductCircuit<Int>::MakeRoundProofWithPrecompute(
             op0.data(), op1.data(), op0.size(), compressFactor, evalToCoeff);
         std::vector<Proof<Int>> proofShares = proof.GetShares(2);
-        auto endProver = chrono::high_resolution_clock::now();
-        proverTime += chrono::duration_cast<chrono::nanoseconds>(endProver - startProver).count();
+
+        Int* randoms = new Int[2];
+        *randoms = proofShares[0].GetRandomFromOracle(secretKey, 64);
+        *(randoms + 1) = proofShares[1].GetRandomFromOracle(secretKey, 64);
+        SHA512_CTX ctx;
+        unsigned char digest[SHA512_DIGEST_LENGTH];
+        SHA512_Init(&ctx);
+        SHA512_Update(&ctx, randoms, 2 * sizeof(Int));
+        SHA512_Final(digest, &ctx);
+        Int totalRandom = Int(digest);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
 
         // Communication
-        // Prover send two shares of proof to two verifiers respectively.
-        LANTime += Network::GetLANPayloadDelay(proof.GetBytes());
-        WANTime += Network::GetWANPayloadDelay(proof.GetBytes());
-        // Exchange random value between verifiers.
+        LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + 2 * sizeof(Int));
+        WANTime += Network::GetWANPayloadDelay(proof.GetBytes() + 2 * sizeof(Int));
+
+
+        // Verifier 1
+        start = std::chrono::high_resolution_clock::now();
+        std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeRoundQuery(totalRandom, compressFactor);
+        Int outShare0 = proofShares[0].GetQueryAnswer(queries[0]) - out0;
+        isValid = isValid && (*randoms == proofShares[0].GetRandomFromOracle(secretKey, 64));
+        end = std::chrono::high_resolution_clock::now();
+        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+        // Verifier 2
+        Int outShare1 = proofShares[1].GetQueryAnswer(queries[0]) - out1;
+        isValid = isValid && (*(randoms + 1) == proofShares[1].GetRandomFromOracle(secretKey, 64));
+
+        // Communication - Verifiers send their own shares of 'out' value.
         LANTime += 2u * Network::GetLANPayloadDelay(sizeof(Int));
         WANTime += 2u * Network::GetWANPayloadDelay(sizeof(Int));
 
         // Verifier 1
-        auto startVerifier = chrono::high_resolution_clock::now();
-        Int random = Int::GenerateRandom(); // Actually it's combination of two exchanged random values.
-        std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeRoundQuery(random, compressFactor);
-        Int outShare0 = proofShares[0].GetQueryAnswer(queries[0]) - out0;
-        auto endVerifier = chrono::high_resolution_clock::now();
-        verifierTime += chrono::duration_cast<chrono::nanoseconds>(endVerifier - startVerifier).count();
+        start = std::chrono::high_resolution_clock::now();
+        isValid = isValid && (outShare0 + outShare1 == Int((uint64_t)0));
 
-        // Verifier 2
-        Int outShare1 = proofShares[1].GetQueryAnswer(queries[0]) - out1;
+        SHA512_CTX vctx;
+        unsigned char vdigest[SHA512_DIGEST_LENGTH];
+        SHA512_Init(&vctx);
+        SHA512_Update(&vctx, randoms, 2 * sizeof(Int));
+        SHA512_Final(vdigest, &vctx);
+        Int totalRandomOfVerifiers = Int(vdigest);
+        isValid = isValid && (totalRandom == totalRandomOfVerifiers);
 
-        // Communication - Verifiers send their own shares of 'out' value.
-        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
-        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
-
-        // Verifier 1
-        startVerifier = chrono::high_resolution_clock::now();
-        isValid = isValid && (outShare0 + outShare1 == Int(0u));
         out0 = proofShares[0].GetQueryAnswer(queries[1]);
 
         // Verifier compress their own input vector.
@@ -116,90 +144,123 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPOneRound(size_t inputLength, size
         poly0s.reserve(nPoly);
         for (size_t i = 0; i < nPoly; ++i)
         {
-            poly0s.emplace_back(
-                Polynomial<Int>::LagrangeInterpolation(resizedInput + compressFactor * i, compressFactor));
+            poly0s.emplace_back(Polynomial<Int>::VandermondeInterpolation(resizedInput + compressFactor * i,
+                                                                          compressFactor, evalToCoeff));
         }
-        op0 = proof.EvaluatePolyPs(random);
+        op0 = proof.EvaluatePolyPs(totalRandom);
         delete[] resizedInput;
 
-        endVerifier = chrono::high_resolution_clock::now();
-        verifierTime += chrono::duration_cast<chrono::nanoseconds>(endVerifier - startVerifier).count();
+        end = std::chrono::high_resolution_clock::now();
+        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
         // Verifier 2
         out1 = proofShares[1].GetQueryAnswer(queries[1]);
 
-        // Communication - Verifier sends random value to prover.
-        LANTime += Network::GetLANDelay(sizeof(Int));
-        WANTime += Network::GetWANDelay(sizeof(Int));
-
         // Prover
-        startProver = chrono::high_resolution_clock::now();
-        op0 = proof.EvaluatePolyPs(random);
-        op1 = proof.EvaluatePolyQs(random);
-        endProver = chrono::high_resolution_clock::now();
-        proverTime += chrono::duration_cast<chrono::nanoseconds>(endProver - startProver).count();
+        start = std::chrono::high_resolution_clock::now();
+        op0 = proof.EvaluatePolyPs(totalRandom);
+        op1 = proof.EvaluatePolyQs(totalRandom);
+        end = std::chrono::high_resolution_clock::now();
+        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+        delete[] randoms;
     }
     else
     {
+        // Precompute a Vandermonde matrix
+        Int* xs = new Int[op0.size() + 1];
+        for (size_t i = 0; i < op0.size() + 1; ++i)
+        {
+            xs[i] = Int(i);
+        }
+        SquareMatrix<Int> evalToCoeff = SquareMatrix<Int>::GetVandermonde(xs, op0.size() + 1);
+        evalToCoeff.Inverse();
+        delete[] xs;
+        xs = (Int*)0;
+
         // Prover
-        auto start = chrono::high_resolution_clock::now();
-        Proof proof = InnerProductCircuit<Int>::MakeProof(op0.data(), op1.data(), op0.size(), op0.size());
+        auto start = std::chrono::high_resolution_clock::now();
+        Proof proof = InnerProductCircuit<Int>::MakeProofWithPrecompute(op0.data(), op1.data(), op0.size(), op0.size(),
+                                                                        evalToCoeff);
         std::vector<Proof<Int>> proofShares = proof.GetShares(2);
-        auto end = chrono::high_resolution_clock::now();
-        proverTime += chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+
+        Int* randoms = new Int[2];
+        *randoms = proofShares[0].GetRandomFromOracle(secretKey, 64);
+        *(randoms + 1) = proofShares[1].GetRandomFromOracle(secretKey, 64);
+        SHA512_CTX ctx;
+        unsigned char digest[SHA512_DIGEST_LENGTH];
+        SHA512_Init(&ctx);
+        SHA512_Update(&ctx, randoms, 2 * sizeof(Int));
+        SHA512_Final(digest, &ctx);
+        Int totalRandom = Int(digest);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
 
         // Communication
-        // Prover send two shares of proof to two verifiers respectively.
-        LANTime += Network::GetLANDelay(proof.GetBytes());
-        WANTime += Network::GetWANDelay(proof.GetBytes());
-        // Exchange random value between verifiers.
-        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
-        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
+        LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + 2u * sizeof(Int));
+        WANTime += Network::GetWANPayloadDelay(proof.GetBytes() + 2u * sizeof(Int));
 
         std::vector<Int> randomsInConstantTerms = proof.GetRandoms(2);
 
+
         // Verifier 1
-        start = chrono::high_resolution_clock::now();
-        Int random = Int::GenerateRandom();
-        std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeQuery(random, op0.size(), op0.size());
+        start = std::chrono::high_resolution_clock::now();
+        std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeQuery(totalRandom, op0.size(), op0.size());
+        isValid = isValid && (*randoms == proofShares[0].GetRandomFromOracle(secretKey, 64));
 
         Int* const resizedInput0 = new Int[op0.size() + 1u];
         std::memset(resizedInput0, 0, (op0.size() + 1u) * sizeof(Int));
         *resizedInput0 = randomsInConstantTerms[0];
         std::memcpy(resizedInput0 + 1u, op0.data(), op0.size() * sizeof(Int));
         Polynomial<Int> poly0;
-        poly0 = Polynomial<Int>::LagrangeInterpolation(resizedInput0, op0.size() + 1u);
-        Int pR = poly0.Evaluate(random);
+        poly0 = Polynomial<Int>::VandermondeInterpolation(resizedInput0, op0.size() + 1u, evalToCoeff);
+        Int pR = poly0.Evaluate(totalRandom);
         delete[] resizedInput0;
 
         Int varificationShare0 = proofShares[0].GetQueryAnswer(queries[queries.size() - 2u]);
         Int resultShare0 = proofShares[0].GetQueryAnswer(queries[queries.size() - 1u]) - out0;
-        end = chrono::high_resolution_clock::now();
-        verifierTime += chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+        end = std::chrono::high_resolution_clock::now();
+        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
         // Verifier 2
+        isValid = isValid && (*(randoms + 1) == proofShares[1].GetRandomFromOracle(secretKey, 64));
+
         Int* const resizedInput1 = new Int[op0.size() + 1u];
         std::memset(resizedInput1, 0, (op0.size() + 1u) * sizeof(Int));
         *resizedInput1 = randomsInConstantTerms[1];
         std::memcpy(resizedInput1 + 1u, op1.data(), op1.size() * sizeof(Int));
         Polynomial<Int> poly1;
-        poly1 = Polynomial<Int>::LagrangeInterpolation(resizedInput1, op0.size() + 1u);
-        Int qR = poly1.Evaluate(random);
+        poly1 = Polynomial<Int>::VandermondeInterpolation(resizedInput1, op0.size() + 1u, evalToCoeff);
+        Int qR = poly1.Evaluate(totalRandom);
         delete[] resizedInput1;
 
         Int varificationShare1 = proofShares[1].GetQueryAnswer(queries[queries.size() - 2u]);
         Int resultShare1 = proofShares[1].GetQueryAnswer(queries[queries.size() - 1u]) - out1;
 
         // Communication - Verifiers share their pR, qR, res0, res1, var0, var1
-        LANTime += 2u * Network::GetLANDelay(3 * sizeof(Int));
-        WANTime += 2u * Network::GetWANDelay(3 * sizeof(Int));
+        LANTime += Network::GetLANPayloadDelay(4 * sizeof(Int));
+        WANTime += Network::GetWANPayloadDelay(4 * sizeof(Int));
 
         // Verifiers
-        start = chrono::high_resolution_clock::now();
-        isValid =
-            isValid && (Int(0) == resultShare0 + resultShare1) && (varificationShare0 + varificationShare1 == pR * qR);
-        end = chrono::high_resolution_clock::now();
-        verifierTime += chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+        start = std::chrono::high_resolution_clock::now();
+
+        isValid = isValid && (Int((uint64_t)0) == resultShare0 + resultShare1) &&
+                  (varificationShare0 + varificationShare1 == pR * qR);
+
+        SHA512_CTX vctx;
+        unsigned char vdigest[SHA512_DIGEST_LENGTH];
+        SHA512_Init(&vctx);
+        SHA512_Update(&vctx, randoms, 2 * sizeof(Int));
+        SHA512_Final(vdigest, &vctx);
+        Int totalRandomOfVerifiers = Int(vdigest);
+        isValid = isValid && (totalRandom == totalRandomOfVerifiers);
+
+        end = std::chrono::high_resolution_clock::now();
+        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+        delete[] randoms;
     }
 
     if (!isValid)
@@ -216,58 +277,77 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputL
     Int::SetSeed(10u);
 
     std::vector<Int> op0(inputLength);
-    std::fill(op0.begin(), op0.end(), Int(0));
+    std::fill(op0.begin(), op0.end(), Int((uint64_t)0));
     std::vector<Int> op1(inputLength);
-    std::fill(op1.begin(), op1.end(), Int(0));
+    std::fill(op1.begin(), op1.end(), Int((uint64_t)0));
 
     double proverTime = 0.;
     double verifierTime = 0.;
     double LANTime = 0.;
     double WANTime = 0.;
+    
+    unsigned char secretKey[64] = {0};
 
     bool isValid = true;
     Int out0 = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), op0.size());
-    Int out1 = Int(0u);
+    Int out1 = Int((uint64_t)0);
     if (ceil(op0.size() / (double)compressFactor) > 1)
     {
         // Prover
-        auto start_prover = chrono::high_resolution_clock::now();
+        auto start_prover = std::chrono::high_resolution_clock::now();
         InteractiveProof<Int> proof =
             InnerProductCircuit<Int>::MakeRoundCoefficientProof(op0.data(), op1.data(), op0.size(), compressFactor);
         std::vector<Proof<Int>> proofShares = proof.GetShares(2);
-        auto end_prover = chrono::high_resolution_clock::now();
-        proverTime += chrono::duration_cast<chrono::nanoseconds>(end_prover - start_prover).count();
+
+        Int* randoms = new Int[2];
+        *randoms = proofShares[0].GetRandomFromOracle(secretKey, 64);
+        *(randoms + 1) = proofShares[1].GetRandomFromOracle(secretKey, 64);
+        SHA512_CTX ctx;
+        unsigned char digest[SHA512_DIGEST_LENGTH];
+        SHA512_Init(&ctx);
+        SHA512_Update(&ctx, randoms, 2 * sizeof(Int));
+        SHA512_Final(digest, &ctx);
+        Int totalRandom = Int(digest);
+
+        auto end_prover = std::chrono::high_resolution_clock::now();
+        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end_prover - start_prover).count();
 
         // Communication
-        // Prover send two shares of proof to two verifiers respectively.
-        LANTime += Network::GetLANDelay(proof.GetBytes());
-        WANTime += Network::GetWANDelay(proof.GetBytes());
-        // Exchange random value between verifiers.
-        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
-        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
+        LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + 2u * sizeof(Int));
+        WANTime += Network::GetWANPayloadDelay(proof.GetBytes() + 2u * sizeof(Int));
 
         // Verifier 1
-        auto start_verifier = chrono::high_resolution_clock::now();
-        Int random = Int::GenerateRandom(); // Actually it's combination of two exchanged random values.
-        std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeRoundCoefficientQuery(random, compressFactor);
+        auto start_verifier = std::chrono::high_resolution_clock::now();
+        std::vector<Query<Int>> queries =
+            InnerProductCircuit<Int>::MakeRoundCoefficientQuery(totalRandom, compressFactor);
         Int outShare0 = proofShares[0].GetQueryAnswer(queries[0]) - out0;
-        auto end_verifier = chrono::high_resolution_clock::now();
-        verifierTime += chrono::duration_cast<chrono::nanoseconds>(end_verifier - start_verifier).count();
+        isValid = isValid && (*randoms == proofShares[0].GetRandomFromOracle(secretKey, 64));
+        auto end_verifier = std::chrono::high_resolution_clock::now();
+        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end_verifier - start_verifier).count();
 
         // Verifier 2
         Int outShare1 = proofShares[1].GetQueryAnswer(queries[0]) - out1;
+        isValid = isValid && (*(randoms + 1) == proofShares[1].GetRandomFromOracle(secretKey, 64));
 
         // Communication - Verifiers send their own shares of 'out' value.
-        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
-        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
+        LANTime += Network::GetLANPayloadDelay(2u * sizeof(Int));
+        WANTime += Network::GetWANPayloadDelay(2u * sizeof(Int));
 
         // Verifier 1
-        start_verifier = chrono::high_resolution_clock::now();
-        isValid = isValid && (outShare0 + outShare1 == Int(0u));
+        start_verifier = std::chrono::high_resolution_clock::now();
+        isValid = isValid && (outShare0 + outShare1 == Int((uint64_t)0));
         out0 = proofShares[0].GetQueryAnswer(queries[1]);
 
+        SHA512_CTX vctx;
+        unsigned char vdigest[SHA512_DIGEST_LENGTH];
+        SHA512_Init(&vctx);
+        SHA512_Update(&vctx, randoms, 2 * sizeof(Int));
+        SHA512_Final(vdigest, &vctx);
+        Int totalRandomOfVerifiers = Int(vdigest);
+        isValid = isValid && (totalRandom == totalRandomOfVerifiers);
+
         // Verifiers compress their own input vector.
-        const size_t nPoly = ceil(op0.size() / (double)compressFactor);
+        const size_t nPoly = (size_t)ceil(op0.size() / (double)compressFactor);
         Int* const resizedInput = new Int[nPoly * compressFactor];
         std::memset(resizedInput, 0, (nPoly * compressFactor) * sizeof(Int));
         std::memcpy(resizedInput, op0.data(), op0.size() * sizeof(Int));
@@ -277,64 +357,73 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputL
         {
             poly0s.emplace_back(resizedInput + i * compressFactor, compressFactor, true);
         }
-        op0 = proof.EvaluatePolyPs(random);
+        op0 = proof.EvaluatePolyPs(totalRandom);
         delete[] resizedInput;
 
-        end_verifier = chrono::high_resolution_clock::now();
-        verifierTime += chrono::duration_cast<chrono::nanoseconds>(end_verifier - start_verifier).count();
+        end_verifier = std::chrono::high_resolution_clock::now();
+        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end_verifier - start_verifier).count();
 
         // Verifier 2
         out1 = proofShares[1].GetQueryAnswer(queries[1]);
 
-        // Communication - Verifier sends random value to prover.
-        LANTime += Network::GetLANDelay(sizeof(Int));
-        WANTime += Network::GetWANDelay(sizeof(Int));
-
         // Prover
-        start_prover = chrono::high_resolution_clock::now();
-        op0 = proof.EvaluatePolyPs(random);
-        op1 = proof.EvaluatePolyQs(random);
-        end_prover = chrono::high_resolution_clock::now();
-        proverTime += chrono::duration_cast<chrono::nanoseconds>(end_prover - start_prover).count();
+        start_prover = std::chrono::high_resolution_clock::now();
+        op0 = proof.EvaluatePolyPs(totalRandom);
+        op1 = proof.EvaluatePolyQs(totalRandom);
+        end_prover = std::chrono::high_resolution_clock::now();
+        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end_prover - start_prover).count();
+
+        delete[] randoms;
     }
     else
     {
         // Prover
-        auto start = chrono::high_resolution_clock::now();
+        auto start = std::chrono::high_resolution_clock::now();
         Proof<Int> proof = InnerProductCircuit<Int>::MakeCoefficientProof(op0.data(), op1.data(), op0.size(), 1);
         std::vector<Proof<Int>> proofShares = proof.GetShares(2);
-        auto end = chrono::high_resolution_clock::now();
-        proverTime += chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+
+        Int* randoms = new Int[2];
+        *randoms = proofShares[0].GetRandomFromOracle(secretKey, 64);
+        *(randoms + 1) = proofShares[1].GetRandomFromOracle(secretKey, 64);
+        SHA512_CTX ctx;
+        unsigned char digest[SHA512_DIGEST_LENGTH];
+        SHA512_Init(&ctx);
+        SHA512_Update(&ctx, randoms, 2 * sizeof(Int));
+        SHA512_Final(digest, &ctx);
+        Int totalRandom = Int(digest);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
 
         // Communication
-        // Prover send two shares of proof to two verifiers respectively.
-        LANTime += Network::GetLANDelay(proof.GetBytes());
-        WANTime += Network::GetWANDelay(proof.GetBytes());
-        // Exchange random value between verifiers.
-        LANTime += 2u * Network::GetLANDelay(sizeof(Int));
-        WANTime += 2u * Network::GetWANDelay(sizeof(Int));
+        LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + 2 * sizeof(Int));
+        WANTime += Network::GetWANPayloadDelay(proof.GetBytes() + 2 * sizeof(Int));
 
         std::vector<Int> randomsInConstantTerms = proof.GetRandoms(2);
 
+
         // Verifier 1
-        start = chrono::high_resolution_clock::now();
-        Int random = Int::GenerateRandom();
-        std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeCoefficientQuery(random, op0.size(), 1);
+        start = std::chrono::high_resolution_clock::now();
+        std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeCoefficientQuery(totalRandom, op0.size(), 1);
+        isValid = isValid && (*randoms == proofShares[0].GetRandomFromOracle(secretKey, 64));
 
         Int* const resizedInput0 = new Int[op0.size() + 1u];
         std::memset(resizedInput0, 0, (op0.size() + 1u) * sizeof(Int));
         *resizedInput0 = randomsInConstantTerms[0];
         std::memcpy(resizedInput0 + 1u, op0.data(), op0.size() * sizeof(Int));
         Polynomial<Int> poly0(resizedInput0, op0.size() + 1u, true);
-        Int pR = poly0.Evaluate(random);
+        Int pR = poly0.Evaluate(totalRandom);
         delete[] resizedInput0;
 
         Int varificationShare0 = proofShares[0].GetQueryAnswer(queries[queries.size() - 2u]);
         Int resultShare0 = proofShares[0].GetQueryAnswer(queries[queries.size() - 1u]) - out0;
-        end = chrono::high_resolution_clock::now();
-        verifierTime += chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+        end = std::chrono::high_resolution_clock::now();
+        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
         // Verifier 2
+        isValid = isValid && (*(randoms + 1) == proofShares[1].GetRandomFromOracle(secretKey, 64));
+
         Int* const resizedInput1 = new Int[op0.size() + 1u];
         std::memset(resizedInput1, 0, (op0.size() + 1u) * sizeof(Int));
         *resizedInput1 = randomsInConstantTerms[1];
@@ -346,22 +435,34 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputL
             resizedInput1[op0.size() - i] = temp;
         }
         Polynomial<Int> poly1(resizedInput1, op1.size() + 1u, true);
-        Int qR = poly1.Evaluate(random);
+        Int qR = poly1.Evaluate(totalRandom);
         delete[] resizedInput1;
 
         Int varificationShare1 = proofShares[1].GetQueryAnswer(queries[queries.size() - 2u]);
         Int resultShare1 = proofShares[1].GetQueryAnswer(queries[queries.size() - 1u]) - out1;
 
         // Communication - Verifiers share their pR, qR, res0, res1, var0, var1
-        LANTime += 2u * Network::GetLANDelay(3 * sizeof(Int));
-        WANTime += 2u * Network::GetWANDelay(3 * sizeof(Int));
+        LANTime += Network::GetLANPayloadDelay(4 * sizeof(Int));
+        WANTime += Network::GetWANPayloadDelay(4 * sizeof(Int));
 
         // Verifiers
-        start = chrono::high_resolution_clock::now();
-        isValid =
-            isValid && (Int(0) == resultShare0 + resultShare1) && (varificationShare0 + varificationShare1 == pR * qR);
-        end = chrono::high_resolution_clock::now();
-        verifierTime += chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+        start = std::chrono::high_resolution_clock::now();
+
+        isValid = isValid && (Int((uint64_t)0) == resultShare0 + resultShare1) &&
+                  (varificationShare0 + varificationShare1 == pR * qR);
+
+        SHA512_CTX vctx;
+        unsigned char vdigest[SHA512_DIGEST_LENGTH];
+        SHA512_Init(&vctx);
+        SHA512_Update(&vctx, randoms, 2 * sizeof(Int));
+        SHA512_Final(vdigest, &vctx);
+        Int totalRandomOfVerifiers = Int(vdigest);
+        isValid = isValid && (totalRandom == totalRandomOfVerifiers);
+
+        end = std::chrono::high_resolution_clock::now();
+        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+        delete[] randoms;
     }
 
     if (!isValid)
@@ -385,7 +486,7 @@ BestSchedule ThreePC<Int>::FindBestFLIOPScheduleRecursive(const size_t inputLeng
 
     double totalMin = DBL_MAX;
     std::vector<size_t> bestLambdas;
-    size_t maxCompress = min(maxLambda, inputLength);
+    size_t maxCompress = std::min(maxLambda, inputLength);
     for (size_t i = 2u; i <= maxCompress; ++i)
     {
         BestSchedule best =
@@ -420,7 +521,7 @@ template <typename Int> void ThreePC<Int>::FindBestFLIOPSchedule(const size_t in
 
     for (size_t i = 2u; i <= inputLength; ++i)
     {
-        size_t maxCompress = min(maxLambda, i);
+        size_t maxCompress = std::min(maxLambda, i);
         for (size_t j = 2u; j <= maxCompress; ++j)
         {
             OneRoundMeasurement measure = SimulateFLIOPOneRound(i, j);
@@ -433,74 +534,78 @@ template <typename Int> void ThreePC<Int>::FindBestFLIOPSchedule(const size_t in
     size_t j = 0;
     double outputs[10];
 
-    cout << "LAN Min schedule" << endl;
+    std::cout << "LAN Min schedule" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
         BestSchedule best = FindBestFLIOPScheduleRecursive(i, totalLANTimes, maxLambda, inputLength);
-        cout << "Length: " << i;
-        cout << " / Min time : " << std::fixed << best.time << std::setprecision(9) << " / Best schedule : ";
-        outputs[j++] = best.time;
+        std::cout << "Length: " << i;
+        std::cout << " / Min time : " << std::fixed << best.time + Network::LANBaseDelayMs * 2 << std::setprecision(9)
+                  << " / Best schedule : ";
+        outputs[j++] = best.time + Network::LANBaseDelayMs * 2;
         std::reverse(best.lambdas.begin(), best.lambdas.end());
         for (size_t j = 0; j < best.lambdas.size(); ++j)
         {
-            cout << best.lambdas[j] << " ";
+            std::cout << best.lambdas[j] << " ";
         }
-        cout << endl;
+        std::cout << std::endl;
     }
     for (size_t i = 0; i < 10; ++i)
     {
-        cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
-    cout << endl;
+    std::cout << std::endl;
 
     j = 0;
-    cout << "WAN Min schedule" << endl;
+    std::cout << "WAN Min schedule" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
         BestSchedule best = FindBestFLIOPScheduleRecursive(i, totalWANTimes, maxLambda, inputLength);
-        cout << "Length: " << i;
-        cout << " / Min time : " << std::fixed << best.time << std::setprecision(9) << " / Best schedule : ";
-        outputs[j++] = best.time;
+        std::cout << "Length: " << i;
+        std::cout << " / Min time : " << std::fixed << best.time + Network::WANBaseDelayMs * 2 << std::setprecision(9)
+                  << " / Best schedule : ";
+        outputs[j++] = best.time + Network::WANBaseDelayMs * 2;
         std::reverse(best.lambdas.begin(), best.lambdas.end());
         for (size_t j = 0; j < best.lambdas.size(); ++j)
         {
-            cout << best.lambdas[j] << " ";
+            std::cout << best.lambdas[j] << " ";
         }
-        cout << endl;
+        std::cout << std::endl;
     }
     for (size_t i = 0; i < 10; ++i)
     {
-        cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
-    cout << endl;
+    std::cout << std::endl;
 
     j = 0;
-    cout << "FLIOP LAN Delay" << endl;
+    std::cout << "FLIOP LAN Delay" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
         double fliopTime = FindFLIOPDelayRecursive(i, totalLANTimes, inputLength);
-        cout << "Length: " << i << " / Time : " << std::fixed << fliopTime << std::setprecision(9) << endl;
-        outputs[j++] = fliopTime;
+        std::cout << "Length: " << i << " / Time : " << std::fixed << fliopTime + Network::LANBaseDelayMs * 2
+                  << std::setprecision(9) << std::endl;
+        outputs[j++] = fliopTime + Network::LANBaseDelayMs * 2;
     }
     for (size_t i = 0; i < 10; ++i)
     {
-        cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
-    cout << endl;
+    std::cout << std::endl;
 
     j = 0;
-    cout << "FLIOP WAN Delay" << endl;
+    std::cout << "FLIOP WAN Delay" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
         double fliopTime = FindFLIOPDelayRecursive(i, totalWANTimes, inputLength);
-        cout << "Length: " << i << " / Time : " << std::fixed << fliopTime << std::setprecision(9) << endl;
-        outputs[j++] = fliopTime;
+        std::cout << "Length: " << i << " / Time : " << std::fixed << fliopTime + Network::WANBaseDelayMs * 2
+                  << std::setprecision(9) << std::endl;
+        outputs[j++] = fliopTime + Network::WANBaseDelayMs * 2;
     }
     for (size_t i = 0; i < 10; ++i)
     {
-        cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
-    cout << endl;
+    std::cout << std::endl;
 
     delete[] totalLANTimes;
     delete[] totalWANTimes;
@@ -514,7 +619,7 @@ void ThreePC<Int>::FindBestFLIOPCoefficientSchedule(const size_t inputLength, co
 
     for (size_t i = 2u; i <= inputLength; ++i)
     {
-        size_t maxCompress = min(maxLambda, i);
+        size_t maxCompress = std::min(maxLambda, i);
         for (size_t j = 2u; j <= maxCompress; ++j)
         {
             OneRoundMeasurement measure = SimulateFLIOPCoefficientOneRound(i, j);
@@ -527,78 +632,81 @@ void ThreePC<Int>::FindBestFLIOPCoefficientSchedule(const size_t inputLength, co
     size_t j = 0;
     double outputs[10];
 
-    cout << "LAN Min schedule" << endl;
+    std::cout << "LAN Min schedule" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
         BestSchedule best = FindBestFLIOPScheduleRecursive(i, totalLANTimes, maxLambda, inputLength);
-        cout << "Length: " << i;
-        cout << " / Min time : " << std::fixed << best.time << std::setprecision(9) << " / Best schedule : ";
-        outputs[j++] = best.time;
+        std::cout << "Length: " << i;
+        std::cout << " / Min time : " << std::fixed << best.time + Network::LANBaseDelayMs * 2 << std::setprecision(9)
+                  << " / Best schedule : ";
+        outputs[j++] = best.time + Network::LANBaseDelayMs * 2;
         std::reverse(best.lambdas.begin(), best.lambdas.end());
         for (size_t j = 0; j < best.lambdas.size(); ++j)
         {
-            cout << best.lambdas[j] << " ";
+            std::cout << best.lambdas[j] << " ";
         }
-        cout << endl;
+        std::cout << std::endl;
     }
     for (size_t i = 0; i < 10; ++i)
     {
-        cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
-    cout << endl;
+    std::cout << std::endl;
 
     j = 0;
-    cout << "WAN Min schedule" << endl;
+    std::cout << "WAN Min schedule" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
         BestSchedule best = FindBestFLIOPScheduleRecursive(i, totalWANTimes, maxLambda, inputLength);
-        cout << "Length: " << i;
-        cout << " / Min time : " << std::fixed << best.time << std::setprecision(9) << " / Best schedule : ";
-        outputs[j++] = best.time;
+        std::cout << "Length: " << i;
+        std::cout << " / Min time : " << std::fixed << best.time + Network::WANBaseDelayMs * 2 << std::setprecision(9)
+                  << " / Best schedule : ";
+        outputs[j++] = best.time + Network::WANBaseDelayMs * 2;
         std::reverse(best.lambdas.begin(), best.lambdas.end());
         for (size_t j = 0; j < best.lambdas.size(); ++j)
         {
-            cout << best.lambdas[j] << " ";
+            std::cout << best.lambdas[j] << " ";
         }
-        cout << endl;
+        std::cout << std::endl;
     }
     for (size_t i = 0; i < 10; ++i)
     {
-        cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
-    cout << endl;
+    std::cout << std::endl;
 
     j = 0;
-    cout << "FLIOP LAN Delay" << endl;
+    std::cout << "FLIOP LAN Delay" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
         double fliopTime = FindFLIOPDelayRecursive(i, totalLANTimes, inputLength);
-        cout << "Length: " << i << " / Time : " << std::fixed << fliopTime << std::setprecision(9) << endl;
-        outputs[j++] = fliopTime;
+        std::cout << "Length: " << i << " / Time : " << std::fixed << fliopTime + Network::LANBaseDelayMs * 2
+                  << std::setprecision(9) << std::endl;
+        outputs[j++] = fliopTime + Network::LANBaseDelayMs * 2;
     }
     for (size_t i = 0; i < 10; ++i)
     {
-        cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
-    cout << endl;
+    std::cout << std::endl;
 
     j = 0;
-    cout << "FLIOP WAN Delay" << endl;
+    std::cout << "FLIOP WAN Delay" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
         double fliopTime = FindFLIOPDelayRecursive(i, totalWANTimes, inputLength);
-        cout << "Length: " << i << " / Time : " << std::fixed << fliopTime << std::setprecision(9) << endl;
-        outputs[j++] = fliopTime;
+        std::cout << "Length: " << i << " / Time : " << std::fixed << fliopTime + Network::WANBaseDelayMs * 2
+                  << std::setprecision(9) << std::endl;
+        outputs[j++] = fliopTime + Network::WANBaseDelayMs * 2;
     }
     for (size_t i = 0; i < 10; ++i)
     {
-        cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
-    cout << endl;
+    std::cout << std::endl;
 
     delete[] totalLANTimes;
     delete[] totalWANTimes;
 }
-
 
 #endif

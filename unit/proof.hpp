@@ -25,6 +25,7 @@ public:
     std::vector<Proof<Int>> GetShares(size_t nShares);
     std::vector<Int> GetRandoms(size_t nRandoms);
     Int GetRandomFromOracle();
+    Int GetRandomFromOracle(unsigned char* secretKey, const size_t keyLength);
 
     Proof<Int>& operator=(const Proof<Int>& obj);
 
@@ -178,6 +179,24 @@ template <typename Int> Int Proof<Int>::GetRandomFromOracle()
     SHA512_Init(&ctx);
     SHA512_Update(&ctx, mValues + (mLength - mProofLength), mProofLength * sizeof(Int));
     SHA512_Final(digest, &ctx);
+    return Int(digest);
+}
+
+template <typename Int> Int Proof<Int>::GetRandomFromOracle(unsigned char* secretKey, const size_t keyLength)
+{
+    SHA512_CTX ctx;
+    unsigned char digest[SHA512_DIGEST_LENGTH];
+    SHA512_Init(&ctx);
+
+    unsigned char* const values = new unsigned char[keyLength * sizeof(unsigned char) + mProofLength * sizeof(Int)];
+    std::memcpy(values, secretKey, keyLength * sizeof(unsigned char));
+    std::memcpy(values + keyLength, mValues + (mLength - mProofLength), mProofLength * sizeof(Int));
+
+    SHA512_Update(&ctx, values, keyLength * sizeof(unsigned char) + mProofLength * sizeof(Int));
+    SHA512_Final(digest, &ctx);
+
+    delete[] values;
+
     return Int(digest);
 }
 

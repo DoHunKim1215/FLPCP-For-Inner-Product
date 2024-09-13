@@ -24,8 +24,8 @@ public:
         return 1.7 * 1e+5 * payloadBytes;
     }
 
-    static constexpr double LANBaseDelay = 0.3 * 1e+5;
-    static constexpr double LANBaseDelay = 0.4 * 1e+8;
+    static constexpr double LANBaseDelayMs = 0.3 * 1e+5 * 1e-6;
+    static constexpr double WANBaseDelayMs = 0.4 * 1e+8 * 1e-6;
 };
 
 #endif

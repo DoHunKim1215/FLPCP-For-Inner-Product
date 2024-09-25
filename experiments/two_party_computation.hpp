@@ -32,7 +32,7 @@ struct FLIOPMeasurement
 template <typename Int> class TwoPC
 {
 public:
-    static FLPCPMeasurement FLPCP(size_t inputLength, size_t nGGate);
+    static FLPCPMeasurement FLPCP(uint32_t seed, size_t inputLength, size_t nGGate);
     static FLPCPMeasurement FLPCPWithPrecompute(size_t inputLength, size_t nGGate);
     static void ExperimentFLPCP();
     static void ExperimentFLPCPWithPrecompute();
@@ -55,9 +55,9 @@ public:
     static void ExperimentFLIOPCoefficientWithRandomOracle();
 };
 
-template <typename Int> FLPCPMeasurement TwoPC<Int>::FLPCP(size_t inputLength, size_t nGGate)
+template <typename Int> FLPCPMeasurement TwoPC<Int>::FLPCP(uint32_t seed, size_t inputLength, size_t nGGate)
 {
-    Int::SetSeed(10);
+    Int::SetSeed(seed);
 
     Int* const op0 = new Int[inputLength];
     for (size_t i = 0; i < inputLength; ++i)

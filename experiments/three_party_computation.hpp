@@ -12,20 +12,6 @@
 #include "..\circuit\inner_product_circuit.hpp"
 #include "..\unit\proof.hpp"
 
-struct OneRoundMeasurement
-{
-    double proverTimeNs;
-    double verifierTimeNs;
-    double communicationTimeNsInLAN;
-    double communicationTimeNsInWAN;
-};
-
-struct BestSchedule
-{
-    double time;
-    std::vector<size_t> lambdas;
-};
-
 template <typename Int> class ThreePC
 {
 public:

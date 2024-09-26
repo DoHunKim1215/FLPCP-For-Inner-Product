@@ -14,28 +14,20 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 * `unit` - class representing proof and query.
 * `win-x64-release` - complied executable files for x64 windows environment.
 
-## Experiment Environment
+## Experiments
+
+### Environment
 
 * CPU: AMD Ryzen 9 7950X 16-Core Processor @ 5.00 GHz (Only used a single core)
 * Memory: DDR5 32GB x2
 
-## FLPCP Complexity over $\mathbb Z_{2^{61}-1}$
-
-### Baseline
+### FLPCP Complexity over $\mathbb Z_{2^{61}-1}$
 
 <div align="center">
   <table>
     <tr>
-      <th> Proof Size: $O(N)$ </th>
-      <th> Query Complexity: $O(1)$ </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLPCP/proof_size.png" /> </td>
-      <td> <img src="./figure/FLPCP/query_complexity.png" /> </td>
-    </tr>
-    <tr>
-      <th> Prover Time: $O(N^3)$ </th>
-      <th> Verifier Time: $O(N^2)$ </th>
+      <th> Prover Time </th>
+      <th> Verifier Time </th>
     </tr>
     <tr>
       <td> <img src="./figure/FLPCP/prover_time.png" /> </td>
@@ -44,179 +36,23 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
   </table>
 </div>
 
-### Coefficient Baseline
+### FLIOP Complexity over $\mathbb Z_{2^{61}-1}$
 
 <div align="center">
   <table>
-    <tr>
-      <th> Proof Size: $O(N)$ </th>
-      <th> Query Complexity: $O(1)$ </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLPCP%20Coefficient/proof_size.png" /> </td>
-      <td> <img src="./figure/FLPCP%20Coefficient/query_complexity.png" /> </td>
-    </tr>
-    <tr>
-      <th> Prover Time: $O(N^2)$ </th>
-      <th> Verifier Time: $O(N)$ </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLPCP%20Coefficient/prover_time.png" /> </td>
-      <td> <img src="./figure/FLPCP%20Coefficient/verifier_time.png" /> </td>
-    </tr>
-  </table>
-</div>
-
-### $\sqrt{N}$ Optimized version
-
-<div align="center">
-  <table>
-    <tr>
-      <th> Proof Size: $O(\sqrt{N})$ </th>
-      <th> Query Complexity: $O(\sqrt{N})$ </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLPCP%20Sqrt/proof_size.png" /> </td>
-      <td> <img src="./figure/FLPCP%20Sqrt/query_complexity.png" /> </td>
-    </tr>
-    <tr>
-      <th> Prover Time: $O(N^2)$ </th>
-      <th> Verifier Time: $O(N\sqrt{N})$ </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLPCP%20Sqrt/prover_time.png" /> </td>
-      <td> <img src="./figure/FLPCP%20Sqrt/verifier_time.png" /> </td>
-    </tr>
-  </table>
-</div>
-
-### Coefficient + $\sqrt{N}$ Optimized version
-
-<div align="center">
-  <table>
-    <tr>
-      <th> Proof Size: $O(\sqrt{N})$ </th>
-      <th> Query Complexity: $O(\sqrt{N})$ </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLPCP%20Sqrt%20Coefficient/proof_size.png" /> </td>
-      <td> <img src="./figure/FLPCP%20Sqrt%20Coefficient/query_complexity.png" /> </td>
-    </tr>
-    <tr>
-      <th> Prover Time: $O(N\sqrt{N})$ </th>
-      <th> Verifier Time: $O(N\sqrt{N})$ </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLPCP%20Sqrt%20Coefficient/prover_time.png" /> </td>
-      <td> <img src="./figure/FLPCP%20Sqrt%20Coefficient/verifier_time.png" /> </td>
-    </tr>
-  </table>
-</div>
-
-### Comparison
-
-<div align="center">
-  <table>
-    <tr>
-      <th> Proof Size </th>
-      <th> Query Complexity </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLPCP%20Comparison/proof_size.png" /> </td>
-      <td> <img src="./figure/FLPCP%20Comparison/query_complexity.png" /> </td>
-    </tr>
-    <tr>
+    <th> Proof Size </th>
       <th> Prover Time </th>
       <th> Verifier Time </th>
     </tr>
     <tr>
-      <td> <img src="./figure/FLPCP%20Comparison/prover_time.png" /> </td>
-      <td> <img src="./figure/FLPCP%20Comparison/verifier_time.png" /> </td>
-    </tr>
-  </table>
-</div>
-
-## FLIOP Complexity over $\mathbb Z_{2^{61}-1}$
-
-### Baseline vs Baseline with random oracle
-
-<div align="center">
-  <table>
-    <tr>
-      <th> Proof Size: $O(\log_2{N})$ </th>
-      <th> Query Complexity: $O(\log_2{N})$ </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLIOP/proof_size.png" /> </td>
-      <td> <img src="./figure/FLIOP/query_complexity.png" /> </td>
-    </tr>
-    <tr>
-      <th> Prover Time: $O(N)$ </th>
-      <th> Verifier Time </th>
-    </tr>
-    <tr>
+    <td> <img src="./figure/FLIOP/proof_size.png" /> </td>
       <td> <img src="./figure/FLIOP/prover_time.png" /> </td>
       <td> <img src="./figure/FLIOP/verifier_time.png" /> </td>
     </tr>
-    <tr>
-      <th> LAN Delay </th>
-      <th> WAN Delay </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLIOP/lan_time.png" /> </td>
-      <td> <img src="./figure/FLIOP/wan_time.png" /> </td>
-    </tr>
   </table>
 </div>
 
-### Coefficient version vs Coefficient with random oracle
-
-<div align="center">
-  <table>
-    <tr>
-      <th> Proof Size: $O(\log_2{N})$ </th>
-      <th> Query Complexity: $O(\log_2{N})$ </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLIOP%20Coefficient/proof_size.png" /> </td>
-      <td> <img src="./figure/FLIOP%20Coefficient/query_complexity.png" /> </td>
-    </tr>
-    <tr>
-      <th> Prover Time: $O(N)$ </th>
-      <th> Verifier Time </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLIOP%20Coefficient/prover_time.png" /> </td>
-      <td> <img src="./figure/FLIOP%20Coefficient/verifier_time.png" /> </td>
-    </tr>
-    <tr>
-      <th> LAN Delay </th>
-      <th> WAN Delay </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLIOP%20Coefficient/lan_time.png" /> </td>
-      <td> <img src="./figure/FLIOP%20Coefficient/wan_time.png" /> </td>
-    </tr>
-  </table>
-</div>
-    
-
-### Comparison
-
-<div align="center">
-  <table>
-    <tr>
-      <th> Prover Time </th>
-      <th> Verifier Time </th>
-    </tr>
-    <tr>
-      <td> <img src="./figure/FLIOP%20Comparison/prover_time.png" /> </td>
-      <td> <img src="./figure/FLIOP%20Comparison/verifier_time.png" /> </td>
-    </tr>
-  </table>
-</div>
-
-## Network Simulation on 3PC
+### Network Simulation on 2PC
 
 <div align="center">
   <table>

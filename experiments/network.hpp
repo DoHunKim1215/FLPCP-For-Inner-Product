@@ -39,4 +39,38 @@ public:
     static constexpr double WANBaseDelayMs = 0.4 * 1e+8 * 1e-6;
 };
 
+struct FLPCPMeasurement
+{
+    size_t proofLength;
+    size_t nQueries;
+    double proverTime;
+    double verifierTime;
+    bool isVaild;
+};
+
+struct FLIOPMeasurement
+{
+    size_t proofLength;
+    size_t nQueries;
+    double proverTime;
+    double verifierTime;
+    double LANTime;
+    double WANTime;
+    bool isVaild;
+};
+
+struct OneRoundMeasurement
+{
+    double proverTimeNs;
+    double verifierTimeNs;
+    double communicationTimeNsInLAN;
+    double communicationTimeNsInWAN;
+};
+
+struct BestSchedule
+{
+    double time;
+    std::vector<size_t> lambdas;
+};
+
 #endif

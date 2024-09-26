@@ -1,13 +1,12 @@
 ﻿#include "math\mpint64.hpp"
-#include "experiments\three_party_computation.hpp"
+#include "experiments\two_party_simulation.hpp"
 
 #include "math\sha512.hpp"
 
 int main(int argc, char* argv[])
 {
-    ThreePC<Mpint64>::FindBestFLIOPSchedule(1024, 32);
-    ThreePC<Mpint64>::FindBestFLIOPCoefficientSchedule(1024, 32);
-    
+    TwoPartySimulation<Mpint64> tps(23571113, 4096, 32);
+    tps.FindBestFLIOPSchedule();
     system("pause");
     return 0;
 }

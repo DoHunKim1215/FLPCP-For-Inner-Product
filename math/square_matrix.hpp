@@ -7,6 +7,7 @@ public:
     ~SquareMatrix();
 
     static SquareMatrix<Int> GetVandermonde(Int* xs, const size_t nXs);
+    static SquareMatrix<Int> GetVandermondeInverse(const size_t n);
 
     void Inverse();
     Int Get(size_t i, size_t j);
@@ -31,6 +32,21 @@ template <typename Int> SquareMatrix<Int> SquareMatrix<Int>::GetVandermonde(Int*
     return SquareMatrix(xs, nXs);
 }
 
+template <typename Int> SquareMatrix<Int> SquareMatrix<Int>::GetVandermondeInverse(const size_t n)
+{
+    Int* xs = new Int[n];
+    for (size_t i = 0; i < n; ++i)
+    {
+        xs[i] = Int(i);
+    }
+    SquareMatrix<Int> evalToCoeff = SquareMatrix<Int>::GetVandermonde(xs, n);
+    evalToCoeff.Inverse();
+
+    delete[] xs;
+
+    return evalToCoeff;
+}
+
 template <typename Int> void SquareMatrix<Int>::Inverse()
 {
     // Start with a identity matrix
@@ -46,7 +62,7 @@ template <typename Int> void SquareMatrix<Int>::Inverse()
     {
         Int pivot = mValues[i * mSize + i];
 
-        assert(pivot != 0); // Singular matrix, no inverse
+        assert(pivot != Int((uint64_t)0)); // Singular matrix, no inverse
 
         for (size_t j = 0; j < mSize; ++j)
         {

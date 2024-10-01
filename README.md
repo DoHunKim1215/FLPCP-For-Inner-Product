@@ -55,7 +55,7 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
   </table>
 </div>
 
-### Finding optimal schedules in FLIOP
+### Finding optimal schedules in FLIOP 2PC
 
 * Total Improvement
 
@@ -114,17 +114,139 @@ Length: 32768 / Min time : 45.081000000 / Best schedule : 6 6 6 5 4 4 2
 Length: 65536 / Min time : 50.561000000 / Best schedule : 7 6 6 5 3 3 3 2
 ```
 
-### Comparison between baseline and coefficient version in MPC
+### Finding optimal schedules in FLIOP 3PC
 
 <div align="center">
   <table>
     <tr>
-      <th> LAN </th>
-      <th> WAN </th>
+      <th> Total Improvement in LAN </th>
+      <th> Proportion in LAN </th>
     </tr>
     <tr>
-      <td> <img src="./figure/Network%20Simulation/LAN_precomputed_oracle.png" /> </td>
-      <td> <img src="./figure/Network%20Simulation/WAN_precomputed_oracle.png" /> </td>
+      <td> <img src="./figure/optimal_schedule_3pc/lan_total.png" /> </td>
+      <td> <img src="./figure/optimal_schedule_3pc/lan_portion.png" /> </td>
+    </tr>
+    <tr>
+      <th> Total Improvement in WAN </th>
+      <th> Proportion in WAN </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/optimal_schedule_3pc/wan_total.png" /> </td>
+      <td> <img src="./figure/optimal_schedule_3pc/wan_portion.png" /> </td>
+    </tr>
+  </table>
+</div>
+
+* Optimal schedule in LAN
+
+```
+Length: 32 / Min time : 0.053225208 / Best schedule : 8 2 2
+Length: 64 / Min time : 0.063236338 / Best schedule : 6 6 2
+Length: 128 / Min time : 0.081458597 / Best schedule : 8 8 2
+Length: 256 / Min time : 0.116769726 / Best schedule : 6 5 5 2
+Length: 512 / Min time : 0.183591986 / Best schedule : 6 7 7 2
+Length: 1024 / Min time : 0.314208680 / Best schedule : 6 7 9 3 2
+Length: 2048 / Min time : 0.573319810 / Best schedule : 5 5 6 7 2
+Length: 4096 / Min time : 1.078947634 / Best schedule : 6 6 6 10 2
+Length: 8192 / Min time : 2.099653198 / Best schedule : 5 5 6 5 6 2
+Length: 16384 / Min time : 4.232875458 / Best schedule : 7 6 6 6 6 2
+Length: 32768 / Min time : 8.434292152 / Best schedule : 5 6 6 7 9 3 2
+Length: 65536 / Min time : 17.126997717 / Best schedule : 5 5 6 6 5 5 3 2
+```
+
+* Optimal schedule in WAN
+
+```
+Length: 32 / Min time : 40.057100000 / Best schedule : 4 4 2
+Length: 64 / Min time : 40.071000000 / Best schedule : 6 4 3 2
+Length: 128 / Min time : 40.096100000 / Best schedule : 7 7 3 2
+Length: 256 / Min time : 40.135300000 / Best schedule : 6 5 3 3 2
+Length: 512 / Min time : 40.207500000 / Best schedule : 5 6 6 3 2
+Length: 1024 / Min time : 40.342800000 / Best schedule : 6 5 6 3 2
+Length: 2048 / Min time : 40.604900000 / Best schedule : 5 5 5 6 3 2
+Length: 4096 / Min time : 41.116800000 / Best schedule : 6 6 6 7 3 2
+Length: 8192 / Min time : 42.140900000 / Best schedule : 5 5 6 5 4 3 2
+Length: 16384 / Min time : 44.280500000 / Best schedule : 7 6 6 6 4 3 2
+Length: 32768 / Min time : 48.486600000 / Best schedule : 5 6 5 5 4 4 3 2
+Length: 65536 / Min time : 57.182300000 / Best schedule : 5 5 6 6 5 5 3 2
+```
+
+### Finding optimal schedules of coefficient version in FLIOP 3PC
+
+<div align="center">
+  <table>
+    <tr>
+      <th> Total Improvement in LAN </th>
+      <th> Proportion in LAN </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/optimal_schedule_3pc_coefficient/lan_total.png" /> </td>
+      <td> <img src="./figure/optimal_schedule_3pc_coefficient/lan_portion.png" /> </td>
+    </tr>
+    <tr>
+      <th> Total Improvement in WAN </th>
+      <th> Proportion in WAN </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/optimal_schedule_3pc_coefficient/wan_total.png" /> </td>
+      <td> <img src="./figure/optimal_schedule_3pc_coefficient/wan_portion.png" /> </td>
+    </tr>
+  </table>
+</div>
+
+* Optimal schedule in LAN
+
+```
+Length: 32 / Min time : 0.043014078 / Best schedule : 5 7 2
+Length: 64 / Min time : 0.047236338 / Best schedule : 8 8 2
+Length: 128 / Min time : 0.055975291 / Best schedule : 11 12 2
+Length: 256 / Min time : 0.072730939 / Best schedule : 13 20 2
+Length: 512 / Min time : 0.103497550 / Best schedule : 9 9 7 2
+Length: 1024 / Min time : 0.165036504 / Best schedule : 10 15 7 2
+Length: 2048 / Min time : 0.284275458 / Best schedule : 11 11 17 2
+Length: 4096 / Min time : 0.518258763 / Best schedule : 11 11 6 6 2
+Length: 8192 / Min time : 0.993886587 / Best schedule : 12 10 10 7 2
+Length: 16384 / Min time : 1.923125541 / Best schedule : 11 11 10 14 2
+Length: 32768 / Min time : 3.787831106 / Best schedule : 11 11 11 9 3 2
+Length: 65536 / Min time : 8.169342235 / Best schedule : 10 11 11 8 7 2
+```
+
+* Optimal schedule in WAN
+
+```
+Length: 32 / Min time : 40.045700000 / Best schedule : 5 7 2
+Length: 64 / Min time : 40.056300000 / Best schedule : 8 8 2
+Length: 128 / Min time : 40.071600000 / Best schedule : 8 4 4 2
+Length: 256 / Min time : 40.092500000 / Best schedule : 8 5 7 2
+Length: 512 / Min time : 40.130100000 / Best schedule : 9 9 7 2
+Length: 1024 / Min time : 40.198200000 / Best schedule : 10 7 5 3 2
+Length: 2048 / Min time : 40.322300000 / Best schedule : 10 7 5 6 2
+Length: 4096 / Min time : 40.561600000 / Best schedule : 11 9 7 6 2
+Length: 8192 / Min time : 41.046000000 / Best schedule : 12 10 10 7 2
+Length: 16384 / Min time : 41.980800000 / Best schedule : 11 11 7 5 4 2
+Length: 32768 / Min time : 43.848800000 / Best schedule : 11 11 8 6 6 2
+Length: 65536 / Min time : 48.237400000 / Best schedule : 10 11 11 8 7 2
+```
+
+### Comparing optimum of baseline and coefficient version in FLIOP 3PC
+
+<div align="center">
+  <table>
+    <tr>
+      <th> Total Improvement in LAN </th>
+      <th> Proportion in LAN </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/comparison_optimum/lan_total.png" /> </td>
+      <td> <img src="./figure/comparison_optimum/lan_portion.png" /> </td>
+    </tr>
+    <tr>
+      <th> Total Improvement in WAN </th>
+      <th> Proportion in WAN </th>
+    </tr>
+    <tr>
+      <td> <img src="./figure/comparison_optimum/wan_total.png" /> </td>
+      <td> <img src="./figure/comparison_optimum/wan_portion.png" /> </td>
     </tr>
   </table>
 </div>

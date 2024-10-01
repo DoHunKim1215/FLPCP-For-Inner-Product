@@ -12,28 +12,31 @@ template <typename Int> class TwoPartySimulation
 {
 public:
     TwoPartySimulation(const uint32_t seed, const size_t inputLength, const size_t maxLambda);
+    ~TwoPartySimulation();
 
     void FindBestFLIOPSchedule();
-    void FindBestFLIOPCoefficientSchedule(const size_t inputLength, const size_t maxLambda);
 
 private:
     size_t mInputLength;
     size_t mMaxLambda;
     uint32_t mSeed;
-    double* mProverTimes;
-    double* mVerifierTimes;
-    double* mLANTimes;
-    double* mWANTimes;
-    double* mTotalLANTimes;
-    double* mTotalWANTimes;
 
-    OneRoundMeasurement SimulateFLIOPOneRound(size_t seed, size_t inputLength, size_t compressFactor);
-    OneRoundMeasurement SimulateFLIOPCoefficientOneRound(size_t seed, size_t inputLength, size_t compressFactor);
-    BestSchedule FindBestFLIOPScheduleRecursive(const size_t inputLength, double* totalTimes);
-    double FindFLIOPPartialDelayRecursive(const size_t inputLength, double* totalTimes,
-                                          const std::vector<size_t> lambdas);
-    double FindFLIOPDelayRecursive(const size_t inputLength, double* totalTimes);
-    void CalculateOneRoundTimes(const size_t inputLength);
+    // (mMaxLambda + 1) x (mInputLength + 1)
+    OneRoundMeasurement** mOneRoundMeasures;
+    double** mTotalLANTimes;
+    double** mTotalWANTimes;
+
+    OneRoundMeasurement SimulateFLIOPOneRound(size_t inputLength, size_t compressFactor);
+    OneRoundMeasurement SimulateFLIOPCoefficientOneRound(size_t inputLength, size_t compressFactor);
+    IOPSchedule FindBestLANSchedule(const size_t inputLength);
+    IOPSchedule FindBestLANScheduleRecursive(const size_t inputLength);
+    IOPSchedule FindBestWANSchedule(const size_t inputLength);
+    IOPSchedule FindBestWANScheduleRecursive(const size_t inputLength);
+    IOPSchedule FindLANDelay(const size_t inputLength);
+    IOPSchedule FindLANDelayRecursive(const size_t inputLength);
+    IOPSchedule FindWANDelay(const size_t inputLength);
+    IOPSchedule FindWANDelayRecursive(const size_t inputLength);
+    void CalculateOneRoundTimesRecursive(const size_t inputLength);
 };
 
 template <typename Int>
@@ -42,13 +45,39 @@ TwoPartySimulation<Int>::TwoPartySimulation(const uint32_t seed, const size_t in
     mSeed = seed;
     mInputLength = inputLength;
     mMaxLambda = maxLambda;
+
+    mOneRoundMeasures = new OneRoundMeasurement*[mMaxLambda + 1];
+    mTotalLANTimes = new double*[mMaxLambda + 1];
+    mTotalWANTimes = new double*[mMaxLambda + 1];
+    for (size_t i = 0; i < mMaxLambda + 1; ++i)
+    {
+        mOneRoundMeasures[i] = new OneRoundMeasurement[mInputLength + 1];
+        std::memset(mOneRoundMeasures[i], 0, (mInputLength + 1) * sizeof(OneRoundMeasurement));
+        mTotalLANTimes[i] = new double[mInputLength + 1];
+        std::memset(mTotalLANTimes[i], 0, (mInputLength + 1) * sizeof(double));
+        mTotalWANTimes[i] = new double[mInputLength + 1];
+        std::memset(mTotalWANTimes[i], 0, (mInputLength + 1) * sizeof(double));
+    }
 }
 
 template <typename Int>
-OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPOneRound(size_t seed, size_t inputLength,
-                                                                   size_t compressFactor)
+TwoPartySimulation<Int>::~TwoPartySimulation()
 {
-    Int::SetSeed(seed);
+    for (size_t i = 0; i < mMaxLambda + 1; ++i)
+    {
+        delete[] mOneRoundMeasures[i];
+        delete[] mTotalLANTimes[i];
+        delete[] mTotalWANTimes[i];
+    }
+    delete[] mOneRoundMeasures;
+    delete[] mTotalLANTimes;
+    delete[] mTotalWANTimes;
+}
+
+template <typename Int>
+OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t compressFactor)
+{
+    Int::SetSeed(mSeed);
 
     std::vector<Int> op0(inputLength);
     std::vector<Int> op1(inputLength);
@@ -75,7 +104,7 @@ OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPOneRound(size_t seed, 
         op0 = proof.EvaluatePolyPs(random);
         op1 = proof.EvaluatePolyQs(random);
         auto end = std::chrono::high_resolution_clock::now();
-        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        proverTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
         // Communication
         LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + sizeof(Int));
@@ -88,7 +117,7 @@ OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPOneRound(size_t seed, 
         isValid = isValid && (out == proof.GetQueryAnswer(queries[0]));
         out = proof.GetQueryAnswer(queries[1]);
         end = std::chrono::high_resolution_clock::now();
-        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     }
     else
     {
@@ -100,7 +129,7 @@ OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPOneRound(size_t seed, 
         Proof proof = InnerProductCircuit<Int>::MakeProofWithPrecompute(op0.data(), op1.data(), op0.size(), op0.size(),
                                                                         evalToCoeff);
         auto end = std::chrono::high_resolution_clock::now();
-        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        proverTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
         // Communication
         LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + op0.size() * 2 * sizeof(Int));
@@ -119,22 +148,22 @@ OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPOneRound(size_t seed, 
         isValid = isValid && (proof.GetQueryAnswer(queries[queries.size() - 2u]) == gR) &&
                   (proof.GetQueryAnswer(queries[queries.size() - 1u]) == out);
         end = std::chrono::high_resolution_clock::now();
-        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     }
 
     if (!isValid)
     {
-        exit(-1); // FLIOP is aborted!!
+        std::cerr << "FLIOP is aborted!!" << std::endl;
+        exit(-1);
     }
 
     return OneRoundMeasurement(proverTime, verifierTime, LANTime, WANTime);
 }
 
 template <typename Int>
-OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPCoefficientOneRound(size_t seed, size_t inputLength,
-                                                                              size_t compressFactor)
+OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLength, size_t compressFactor)
 {
-    Int::SetSeed(seed);
+    Int::SetSeed(mSeed);
 
     std::vector<Int> op0(inputLength);
     std::vector<Int> op1(inputLength);
@@ -158,7 +187,7 @@ OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPCoefficientOneRound(si
         op0 = proof.EvaluatePolyPs(random);
         op1 = proof.EvaluatePolyQs(random);
         auto end_prover = std::chrono::high_resolution_clock::now();
-        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end_prover - start_prover).count();
+        proverTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end_prover - start_prover).count();
 
         // Communication
         LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + sizeof(Int));
@@ -171,7 +200,7 @@ OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPCoefficientOneRound(si
         isValid = isValid && (out == proof.GetQueryAnswer(queries[0]));
         out = proof.GetQueryAnswer(queries[1]);
         auto end_verifier = std::chrono::high_resolution_clock::now();
-        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end_verifier - start_verifier).count();
+        verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end_verifier - start_verifier).count();
     }
     else
     {
@@ -179,7 +208,7 @@ OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPCoefficientOneRound(si
         auto start = std::chrono::high_resolution_clock::now();
         Proof<Int> proof = InnerProductCircuit<Int>::MakeCoefficientProof(op0.data(), op1.data(), op0.size(), 1);
         auto end = std::chrono::high_resolution_clock::now();
-        proverTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        proverTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
         // Communication
         LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + op0.size() * 2 * sizeof(Int));
@@ -194,151 +223,251 @@ OneRoundMeasurement TwoPartySimulation<Int>::SimulateFLIOPCoefficientOneRound(si
             (proof.GetQueryAnswer(queries[0]) * proof.GetQueryAnswer(queries[1]) == proof.GetQueryAnswer(queries[2])) &&
             (proof.GetQueryAnswer(queries[3]) == out);
         end = std::chrono::high_resolution_clock::now();
-        verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     }
 
     if (!isValid)
     {
-        exit(-1); // FLIOP is aborted!!
+        std::cerr << "FLIOP is aborted!!" << std::endl;
+        exit(-1);
     }
 
     return OneRoundMeasurement(proverTime, verifierTime, LANTime, WANTime);
 }
 
-template <typename Int>
-BestSchedule TwoPartySimulation<Int>::FindBestFLIOPScheduleRecursive(const size_t inputLength, double* totalTimes)
+template <typename Int> IOPSchedule TwoPartySimulation<Int>::FindBestLANSchedule(const size_t inputLength)
 {
-    if (inputLength == 2u)
+    IOPSchedule best = FindBestLANScheduleRecursive(inputLength);
+    std::reverse(best.lambdas.begin(), best.lambdas.end());
+    std::reverse(best.trace.begin(), best.trace.end());
+    return best;
+}
+
+template <typename Int>
+IOPSchedule TwoPartySimulation<Int>::FindBestLANScheduleRecursive(const size_t inputLength)
+{
+    if (inputLength <= 2)
     {
         std::vector<size_t> lambdas(1);
-        lambdas[0] = 2u;
-        return BestSchedule(totalTimes[inputLength + mInputLength * 2u], lambdas);
+        std::vector<OneRoundMeasurement> trace(1);
+        lambdas[0] = 2;
+        trace[0] = mOneRoundMeasures[2][inputLength];
+        double totalTime = trace[0].proverTimeNs + trace[0].verifierTimeNs + trace[0].communicationTimeNsInLAN;
+        return IOPSchedule(totalTime, lambdas, trace);
     }
 
     double totalMin = DBL_MAX;
     std::vector<size_t> bestLambdas;
-    size_t maxCompress = std::min(mMaxLambda, inputLength);
-    for (size_t i = 2u; i <= maxCompress; ++i)
+    std::vector<OneRoundMeasurement> newTrace;
+    const size_t maxCompress = std::min(mMaxLambda, inputLength);
+    for (size_t lambda = 2; lambda <= maxCompress; ++lambda)
     {
-        BestSchedule best = FindBestFLIOPScheduleRecursive(ceil(inputLength / (double)i), totalTimes);
-        double currMin = totalTimes[inputLength + mInputLength * i] + best.time;
+        IOPSchedule best = FindBestLANScheduleRecursive(ceil(inputLength / (double)lambda));
+        double currMin = mOneRoundMeasures[lambda][inputLength].proverTimeNs +
+                         mOneRoundMeasures[lambda][inputLength].verifierTimeNs +
+                         mOneRoundMeasures[lambda][inputLength].communicationTimeNsInLAN + best.time;
         if (totalMin > currMin)
         {
             totalMin = currMin;
             bestLambdas = best.lambdas;
-            bestLambdas.push_back(i);
+            bestLambdas.push_back(lambda);
+            newTrace = best.trace;
+            newTrace.push_back(mOneRoundMeasures[lambda][inputLength]);
         }
     }
 
-    return BestSchedule(totalMin, bestLambdas);
+    return IOPSchedule(totalMin, bestLambdas, newTrace);
 }
 
-template <typename Int>
-double TwoPartySimulation<Int>::FindFLIOPDelayRecursive(const size_t inputLength, double* totalTimes)
+template <typename Int> IOPSchedule TwoPartySimulation<Int>::FindBestWANSchedule(const size_t inputLength)
 {
-    if (inputLength == 2u)
+    IOPSchedule best = FindBestWANScheduleRecursive(inputLength);
+    std::reverse(best.lambdas.begin(), best.lambdas.end());
+    std::reverse(best.trace.begin(), best.trace.end());
+    return best;
+}
+
+template <typename Int> IOPSchedule TwoPartySimulation<Int>::FindBestWANScheduleRecursive(const size_t inputLength)
+{
+    if (inputLength <= 2)
     {
-        return totalTimes[inputLength + mInputLength * 2u];
+        std::vector<size_t> lambdas(1);
+        std::vector<OneRoundMeasurement> trace(1);
+        lambdas[0] = 2;
+        trace[0] = mOneRoundMeasures[2][inputLength];
+        double totalTime = trace[0].proverTimeNs + trace[0].verifierTimeNs + trace[0].communicationTimeNsInWAN;
+        return IOPSchedule(totalTime, lambdas, trace);
     }
-    double best = FindFLIOPDelayRecursive(ceil(inputLength / (double)2), totalTimes);
-    return totalTimes[inputLength + mInputLength * 2] + best;
-}
 
-template <typename Int>
-double TwoPartySimulation<Int>::FindFLIOPPartialDelayRecursive(const size_t inputLength, double* totalTimes,
-                                                               const std::vector<size_t> lambdas)
-{
-    size_t currentInputLength = inputLength;
-    double result = 0.;
-    for (size_t i = 0; i < lambdas.size(); ++i)
+    double totalMin = DBL_MAX;
+    std::vector<size_t> bestLambdas;
+    std::vector<OneRoundMeasurement> newTrace;
+    const size_t maxCompress = std::min(mMaxLambda, inputLength);
+    for (size_t lambda = 2; lambda <= maxCompress; ++lambda)
     {
-        result += totalTimes[currentInputLength + mInputLength * lambdas[i]];
-        currentInputLength = ceil(currentInputLength / (double)lambdas[i]);
+        IOPSchedule best = FindBestWANScheduleRecursive(ceil(inputLength / (double)lambda));
+        double currMin = mOneRoundMeasures[lambda][inputLength].proverTimeNs +
+                         mOneRoundMeasures[lambda][inputLength].verifierTimeNs +
+                         mOneRoundMeasures[lambda][inputLength].communicationTimeNsInWAN + best.time;
+        if (totalMin > currMin)
+        {
+            totalMin = currMin;
+            bestLambdas = best.lambdas;
+            bestLambdas.push_back(lambda);
+            newTrace = best.trace;
+            newTrace.push_back(mOneRoundMeasures[lambda][inputLength]);
+        }
     }
-    return result;
+
+    return IOPSchedule(totalMin, bestLambdas, newTrace);
 }
 
-template <typename Int>
-void TwoPartySimulation<Int>::CalculateOneRoundTimes(const size_t inputLength)
+template <typename Int> IOPSchedule TwoPartySimulation<Int>::FindLANDelay(const size_t inputLength)
 {
-    size_t maxCompress = std::min(mMaxLambda, inputLength);
-    for (size_t i = 2; i <= maxCompress; ++i)
-    {
-        OneRoundMeasurement measure = SimulateFLIOPOneRound(mSeed, inputLength, i);
-        mProverTimes[inputLength + mInputLength * i] = measure.proverTimeNs * 1e-6;
-        mVerifierTimes[inputLength + mInputLength * i] = measure.verifierTimeNs * 1e-6;
-        mLANTimes[inputLength + mInputLength * i] = measure.communicationTimeNsInLAN * 1e-6;
-        mWANTimes[inputLength + mInputLength * i] = measure.communicationTimeNsInWAN * 1e-6;
-        mTotalLANTimes[inputLength + mInputLength * i] = mProverTimes[inputLength + mInputLength * i] +
-                                                         mVerifierTimes[inputLength + mInputLength * i] +
-                                                         mLANTimes[inputLength + mInputLength * i];
-        mTotalWANTimes[inputLength + mInputLength * i] = mProverTimes[inputLength + mInputLength * i] +
-                                                         mVerifierTimes[inputLength + mInputLength * i] +
-                                                         mWANTimes[inputLength + mInputLength * i];
+    IOPSchedule schedule = FindLANDelayRecursive(inputLength);
+    std::reverse(schedule.trace.begin(), schedule.trace.end());
+    return schedule;
+}
 
-        CalculateOneRoundTimes(ceil(inputLength / (double)i));
+template <typename Int> IOPSchedule TwoPartySimulation<Int>::FindLANDelayRecursive(const size_t inputLength)
+{
+    if (inputLength <= 2)
+    {
+        std::vector<size_t> lambdas(1);
+        std::vector<OneRoundMeasurement> trace(1);
+        lambdas[0] = 2;
+        trace[0] = mOneRoundMeasures[2][inputLength];
+        double totalTime = trace[0].proverTimeNs + trace[0].verifierTimeNs + trace[0].communicationTimeNsInLAN;
+        return IOPSchedule(totalTime, lambdas, trace);
+    }
+    IOPSchedule schedule = FindLANDelayRecursive(ceil(inputLength / (double)2));
+
+    double newTotal = mOneRoundMeasures[2][inputLength].proverTimeNs +
+                      mOneRoundMeasures[2][inputLength].verifierTimeNs +
+                      mOneRoundMeasures[2][inputLength].communicationTimeNsInLAN + schedule.time;
+    std::vector<size_t> newLambdas = schedule.lambdas;
+    newLambdas.push_back(2);
+    std::vector<OneRoundMeasurement> newTrace = schedule.trace;
+    newTrace.push_back(mOneRoundMeasures[2][inputLength]);
+
+    return IOPSchedule(newTotal, newLambdas, newTrace);
+}
+
+template <typename Int> IOPSchedule TwoPartySimulation<Int>::FindWANDelay(const size_t inputLength)
+{
+    IOPSchedule schedule = FindWANDelayRecursive(inputLength);
+    std::reverse(schedule.trace.begin(), schedule.trace.end());
+    return schedule;
+}
+
+template <typename Int> IOPSchedule TwoPartySimulation<Int>::FindWANDelayRecursive(const size_t inputLength)
+{
+    if (inputLength <= 2)
+    {
+        std::vector<size_t> lambdas(1);
+        std::vector<OneRoundMeasurement> trace(1);
+        lambdas[0] = 2;
+        trace[0] = mOneRoundMeasures[2][inputLength];
+        double totalTime = trace[0].proverTimeNs + trace[0].verifierTimeNs + trace[0].communicationTimeNsInWAN;
+        return IOPSchedule(totalTime, lambdas, trace);
+    }
+    IOPSchedule schedule = FindWANDelayRecursive(ceil(inputLength / (double)2));
+
+    double newTotal = mOneRoundMeasures[2][inputLength].proverTimeNs +
+                      mOneRoundMeasures[2][inputLength].verifierTimeNs +
+                      mOneRoundMeasures[2][inputLength].communicationTimeNsInWAN + schedule.time;
+    std::vector<size_t> newLambdas = schedule.lambdas;
+    newLambdas.push_back(2);
+    std::vector<OneRoundMeasurement> newTrace = schedule.trace;
+    newTrace.push_back(mOneRoundMeasures[2][inputLength]);
+
+    return IOPSchedule(newTotal, newLambdas, newTrace);
+}
+
+template <typename Int> void TwoPartySimulation<Int>::CalculateOneRoundTimesRecursive(const size_t inputLength)
+{
+    const size_t maxCompress = std::min(mMaxLambda, inputLength);
+    for (size_t lambda = 2; lambda <= maxCompress; ++lambda)
+    {
+        if (mOneRoundMeasures[lambda][inputLength].proverTimeNs == 0.)
+        {
+            mOneRoundMeasures[lambda][inputLength] = SimulateFLIOPOneRound(inputLength, lambda);
+        }
+        CalculateOneRoundTimesRecursive(ceil(inputLength / (double)lambda));
+    }
+
+    if (inputLength >= mInputLength * 0.1)
+    {
+        std::cout << "Calculated : " << inputLength << std::endl;
     }
 }
 
 template <typename Int>
 void TwoPartySimulation<Int>::FindBestFLIOPSchedule()
 {
-    mProverTimes = new double[(mInputLength + 1u) * (mMaxLambda + 1u)];
-    mVerifierTimes = new double[(mInputLength + 1u) * (mMaxLambda + 1u)];
-    mLANTimes = new double[(mInputLength + 1u) * (mMaxLambda + 1u)];
-    mWANTimes = new double[(mInputLength + 1u) * (mMaxLambda + 1u)];
-    mTotalLANTimes = new double[(mInputLength + 1u) * (mMaxLambda + 1u)];
-    mTotalWANTimes = new double[(mInputLength + 1u) * (mMaxLambda + 1u)];
-    CalculateOneRoundTimes(mInputLength);
+    const size_t nStep = (size_t)std::log2(mInputLength / (double)2) + 1;
+
+    std::cout.sync_with_stdio(false);
+
+    CalculateOneRoundTimesRecursive(mInputLength);
+    std::cout << "One round times were successfully measured!" << std::endl;
 
     size_t j = 0;
-    double outputs[10];
-    double proverTimeOutputs[10];
-    double verifierTimeOutputs[10];
-    double commTimeOutputs[10];
+    double* outputs = new double[nStep];
+    double* proverTimeOutputs = new double[nStep];
+    double* verifierTimeOutputs = new double[nStep];
+    double* commTimeOutputs = new double[nStep];
 
     std::cout << "LAN Min schedule" << std::endl;
-    for (size_t i = 2u; i <= mInputLength; i *= 2u)
+    for (size_t i = 2; i <= mInputLength; i *= 2)
     {
-        BestSchedule best = FindBestFLIOPScheduleRecursive(i, mTotalLANTimes);
-        std::cout << "Length: " << i;
-        std::cout << " / Min time : " << std::fixed << best.time + Network::LANBaseDelayMs << std::setprecision(9);
-        std::cout << " / Best schedule : ";
-        outputs[j] = best.time + Network::LANBaseDelayMs;
+        IOPSchedule best = FindBestLANSchedule(i);
+        outputs[j] = best.time * 1e-6 + Network::LANBaseDelayMs;
 
-        std::reverse(best.lambdas.begin(), best.lambdas.end());
-        for (size_t j = 0; j < best.lambdas.size(); ++j)
+        std::cout << "Length: " << i << " / Min time : ";
+        std::cout << std::fixed << outputs[j] << std::setprecision(9);
+        std::cout << " / Best schedule : ";
+        for (size_t k = 0; k < best.lambdas.size(); ++k)
         {
-            std::cout << best.lambdas[j] << " ";
+            std::cout << best.lambdas[k] << " ";
         }
         std::cout << std::endl;
 
-        proverTimeOutputs[j] = FindFLIOPPartialDelayRecursive(i, mProverTimes, best.lambdas);
-        verifierTimeOutputs[j] = FindFLIOPPartialDelayRecursive(i, mVerifierTimes, best.lambdas);
-        commTimeOutputs[j] =
-            FindFLIOPPartialDelayRecursive(i, mLANTimes, best.lambdas) + Network::LANBaseDelayMs;
+        proverTimeOutputs[j] = 0.;
+        verifierTimeOutputs[j] = 0.;
+        commTimeOutputs[j] = 0.;
+        for (size_t k = 0; k < best.trace.size(); ++k)
+        {
+            proverTimeOutputs[j] += best.trace[k].proverTimeNs;
+            verifierTimeOutputs[j] += best.trace[k].verifierTimeNs;
+            commTimeOutputs[j] += best.trace[k].communicationTimeNsInLAN;
+        }
+        proverTimeOutputs[j] *= 1e-6;
+        verifierTimeOutputs[j] *= 1e-6;
+        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + Network::LANBaseDelayMs;
+
         ++j;
     }
     std::cout << "Total: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Prover: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Verifier: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Communication: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(9) << ", ";
     }
@@ -346,47 +475,56 @@ void TwoPartySimulation<Int>::FindBestFLIOPSchedule()
 
     j = 0;
     std::cout << "WAN Min schedule" << std::endl;
-    for (size_t i = 2u; i <= mInputLength; i *= 2u)
+    for (size_t i = 2; i <= mInputLength; i *= 2)
     {
-        BestSchedule best = FindBestFLIOPScheduleRecursive(i, mTotalWANTimes);
+        IOPSchedule best = FindBestWANSchedule(i);
         std::cout << "Length: " << i;
-        std::cout << " / Min time : " << std::fixed << best.time + Network::WANBaseDelayMs << std::setprecision(9);
+        std::cout << " / Min time : " << std::fixed << best.time * 1e-6 + Network::WANBaseDelayMs
+                  << std::setprecision(9);
         std::cout << " / Best schedule : ";
-        outputs[j] = best.time + Network::WANBaseDelayMs;
-
-        std::reverse(best.lambdas.begin(), best.lambdas.end());
-        for (size_t j = 0; j < best.lambdas.size(); ++j)
+        for (size_t k = 0; k < best.lambdas.size(); ++k)
         {
-            std::cout << best.lambdas[j] << " ";
+            std::cout << best.lambdas[k] << " ";
         }
         std::cout << std::endl;
 
-        proverTimeOutputs[j] = FindFLIOPPartialDelayRecursive(i, mProverTimes, best.lambdas);
-        verifierTimeOutputs[j] = FindFLIOPPartialDelayRecursive(i, mVerifierTimes, best.lambdas);
-        commTimeOutputs[j] =
-            FindFLIOPPartialDelayRecursive(i, mWANTimes, best.lambdas) + Network::WANBaseDelayMs;
+        outputs[j] = best.time * 1e-6 + Network::WANBaseDelayMs;
+
+        proverTimeOutputs[j] = 0.;
+        verifierTimeOutputs[j] = 0.;
+        commTimeOutputs[j] = 0.;
+        for (size_t k = 0; k < best.trace.size(); ++k)
+        {
+            proverTimeOutputs[j] += best.trace[k].proverTimeNs;
+            verifierTimeOutputs[j] += best.trace[k].verifierTimeNs;
+            commTimeOutputs[j] += best.trace[k].communicationTimeNsInWAN;
+        }
+        proverTimeOutputs[j] *= 1e-6;
+        verifierTimeOutputs[j] *= 1e-6;
+        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + Network::WANBaseDelayMs;
+
         ++j;
     }
     std::cout << "Total: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Prover: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Verifier: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Communication: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(9) << ", ";
     }
@@ -394,38 +532,48 @@ void TwoPartySimulation<Int>::FindBestFLIOPSchedule()
 
     j = 0;
     std::cout << "FLIOP LAN Delay" << std::endl;
-    for (size_t i = 2u; i <= mInputLength; i *= 2u)
+    for (size_t i = 2; i <= mInputLength; i *= 2)
     {
-        double fliopTime = FindFLIOPDelayRecursive(i, mTotalLANTimes);
-        std::cout << "Length: " << i << " / Time : " << std::fixed << fliopTime + Network::LANBaseDelayMs
+        IOPSchedule schedule = FindLANDelay(i);
+        std::cout << "Length: " << i << " / Time : " << std::fixed << schedule.time * 1e-6 + Network::LANBaseDelayMs
                   << std::setprecision(9) << std::endl;
-        outputs[j] = fliopTime + Network::LANBaseDelayMs;
+        outputs[j] = schedule.time * 1e-6 + Network::LANBaseDelayMs;
 
-        proverTimeOutputs[j] = FindFLIOPDelayRecursive(i, mProverTimes);
-        verifierTimeOutputs[j] = FindFLIOPDelayRecursive(i, mVerifierTimes);
-        commTimeOutputs[j] = FindFLIOPDelayRecursive(i, mLANTimes) + Network::LANBaseDelayMs;
+        proverTimeOutputs[j] = 0.;
+        verifierTimeOutputs[j] = 0.;
+        commTimeOutputs[j] = 0.;
+        for (size_t k = 0; k < schedule.trace.size(); ++k)
+        {
+            proverTimeOutputs[j] += schedule.trace[k].proverTimeNs;
+            verifierTimeOutputs[j] += schedule.trace[k].verifierTimeNs;
+            commTimeOutputs[j] += schedule.trace[k].communicationTimeNsInLAN;
+        }
+        proverTimeOutputs[j] *= 1e-6;
+        verifierTimeOutputs[j] *= 1e-6;
+        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + Network::LANBaseDelayMs;
+
         ++j;
     }
     std::cout << "Total: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Prover: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Verifier: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Communication: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(9) << ", ";
     }
@@ -433,153 +581,57 @@ void TwoPartySimulation<Int>::FindBestFLIOPSchedule()
 
     j = 0;
     std::cout << "FLIOP WAN Delay" << std::endl;
-    for (size_t i = 2u; i <= mInputLength; i *= 2u)
+    for (size_t i = 2; i <= mInputLength; i *= 2)
     {
-        double fliopTime = FindFLIOPDelayRecursive(i, mTotalWANTimes);
-        std::cout << "Length: " << i << " / Time : " << std::fixed << fliopTime + Network::WANBaseDelayMs
+        IOPSchedule schedule = FindWANDelay(i);
+        std::cout << "Length: " << i << " / Time : " << std::fixed << schedule.time * 1e-6 + Network::WANBaseDelayMs
                   << std::setprecision(9) << std::endl;
-        outputs[j] = fliopTime + Network::WANBaseDelayMs;
+        outputs[j] = schedule.time * 1e-6 + Network::WANBaseDelayMs;
 
-        proverTimeOutputs[j] = FindFLIOPDelayRecursive(i, mProverTimes);
-        verifierTimeOutputs[j] = FindFLIOPDelayRecursive(i, mVerifierTimes);
-        commTimeOutputs[j] = FindFLIOPDelayRecursive(i, mWANTimes) + Network::WANBaseDelayMs;
+        proverTimeOutputs[j] = 0.;
+        verifierTimeOutputs[j] = 0.;
+        commTimeOutputs[j] = 0.;
+        for (size_t k = 0; k < schedule.trace.size(); ++k)
+        {
+            proverTimeOutputs[j] += schedule.trace[k].proverTimeNs;
+            verifierTimeOutputs[j] += schedule.trace[k].verifierTimeNs;
+            commTimeOutputs[j] += schedule.trace[k].communicationTimeNsInWAN;
+        }
+        proverTimeOutputs[j] *= 1e-6;
+        verifierTimeOutputs[j] *= 1e-6;
+        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + Network::WANBaseDelayMs;
+
         ++j;
     }
     std::cout << "Total: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Prover: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Verifier: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Communication: ";
-    for (size_t i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nStep; ++i)
     {
         std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(9) << ", ";
     }
     std::cout << std::endl;
 
-    delete[] mProverTimes;
-    mProverTimes = (double*)0;
-    delete[] mVerifierTimes;
-    mVerifierTimes = (double*)0;
-    delete[] mLANTimes;
-    mLANTimes = (double*)0;
-    delete[] mWANTimes;
-    mWANTimes = (double*)0;
-    delete[] mTotalLANTimes;
-    mTotalLANTimes = (double*)0;
-    delete[] mTotalWANTimes;
-    mTotalWANTimes = (double*)0;
-}
-
-template <typename Int>
-void TwoPartySimulation<Int>::FindBestFLIOPCoefficientSchedule(const size_t inputLength, const size_t maxLambda)
-{
-    double* totalLANTimes = new double[(inputLength + 1u) * (maxLambda + 1u)];
-    double* totalWANTimes = new double[(inputLength + 1u) * (maxLambda + 1u)];
-
-    for (size_t i = 2u; i <= inputLength; ++i)
-    {
-        size_t maxCompress = std::min(maxLambda, i);
-        for (size_t j = 2u; j <= maxCompress; ++j)
-        {
-            OneRoundMeasurement measure = SimulateFLIOPCoefficientOneRound(i, j);
-            double common = measure.proverTimeNs + measure.verifierTimeNs;
-            totalLANTimes[i + inputLength * j] = (common + measure.communicationTimeNsInLAN) * 1e-6;
-            totalWANTimes[i + inputLength * j] = (common + measure.communicationTimeNsInWAN) * 1e-6;
-        }
-    }
-
-    size_t j = 0;
-    double outputs[10];
-
-    std::cout << "LAN Min schedule" << std::endl;
-    for (size_t i = 2u; i <= inputLength; i *= 2u)
-    {
-        BestSchedule best = FindBestFLIOPScheduleRecursive(i, totalLANTimes, maxLambda, inputLength);
-        std::cout << "Length: " << i;
-        std::cout << " / Min time : " << std::fixed << best.time + Network::LANBaseDelayMs * 2 << std::setprecision(9)
-                  << " / Best schedule : ";
-        outputs[j++] = best.time + Network::LANBaseDelayMs * 2;
-        std::reverse(best.lambdas.begin(), best.lambdas.end());
-        for (size_t j = 0; j < best.lambdas.size(); ++j)
-        {
-            std::cout << best.lambdas[j] << " ";
-        }
-        std::cout << std::endl;
-    }
-    for (size_t i = 0; i < 10; ++i)
-    {
-        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
-    }
-    std::cout << std::endl;
-
-    j = 0;
-    std::cout << "WAN Min schedule" << std::endl;
-    for (size_t i = 2u; i <= inputLength; i *= 2u)
-    {
-        BestSchedule best = FindBestFLIOPScheduleRecursive(i, totalWANTimes, maxLambda, inputLength);
-        std::cout << "Length: " << i;
-        std::cout << " / Min time : " << std::fixed << best.time + Network::WANBaseDelayMs * 2 << std::setprecision(9)
-                  << " / Best schedule : ";
-        outputs[j++] = best.time + Network::WANBaseDelayMs * 2;
-        std::reverse(best.lambdas.begin(), best.lambdas.end());
-        for (size_t j = 0; j < best.lambdas.size(); ++j)
-        {
-            std::cout << best.lambdas[j] << " ";
-        }
-        std::cout << std::endl;
-    }
-    for (size_t i = 0; i < 10; ++i)
-    {
-        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
-    }
-    std::cout << std::endl;
-
-    j = 0;
-    std::cout << "FLIOP LAN Delay" << std::endl;
-    for (size_t i = 2u; i <= inputLength; i *= 2u)
-    {
-        double fliopTime = FindFLIOPDelayRecursive(i, totalLANTimes, inputLength);
-        std::cout << "Length: " << i << " / Time : " << std::fixed << fliopTime + Network::LANBaseDelayMs * 2
-                  << std::setprecision(9) << std::endl;
-        outputs[j++] = fliopTime + Network::LANBaseDelayMs * 2;
-    }
-    for (size_t i = 0; i < 10; ++i)
-    {
-        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
-    }
-    std::cout << std::endl;
-
-    j = 0;
-    std::cout << "FLIOP WAN Delay" << std::endl;
-    for (size_t i = 2u; i <= inputLength; i *= 2u)
-    {
-        double fliopTime = FindFLIOPDelayRecursive(i, totalWANTimes, inputLength);
-        std::cout << "Length: " << i << " / Time : " << std::fixed << fliopTime + Network::WANBaseDelayMs * 2
-                  << std::setprecision(9) << std::endl;
-        outputs[j++] = fliopTime + Network::WANBaseDelayMs * 2;
-    }
-    for (size_t i = 0; i < 10; ++i)
-    {
-        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
-    }
-    std::cout << std::endl;
-
-    delete[] totalLANTimes;
-    delete[] totalWANTimes;
+    delete[] outputs;
+    delete[] proverTimeOutputs;
+    delete[] verifierTimeOutputs;
+    delete[] commTimeOutputs;
 }
 
 #endif

@@ -67,10 +67,11 @@ struct OneRoundMeasurement
     double communicationTimeNsInWAN;
 };
 
-struct BestSchedule
+struct IOPSchedule
 {
     double time;
     std::vector<size_t> lambdas;
+    std::vector<OneRoundMeasurement> trace;
 };
 
 #endif

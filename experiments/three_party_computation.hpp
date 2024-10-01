@@ -21,7 +21,7 @@ public:
 private:
     static OneRoundMeasurement SimulateFLIOPOneRound(size_t inputLength, size_t compressFactor);
     static OneRoundMeasurement SimulateFLIOPCoefficientOneRound(size_t inputLength, size_t compressFactor);
-    static BestSchedule FindBestFLIOPScheduleRecursive(const size_t inputLength, double* totalTimes,
+    static IOPSchedule FindBestLANScheduleRecursive(const size_t inputLength, double* totalTimes,
                                                        const size_t maxLambda, const size_t maxLength);
     static double FindFLIOPDelayRecursive(const size_t inputLength, double* totalTimes, const size_t maxLength);
 };
@@ -460,14 +460,14 @@ OneRoundMeasurement ThreePC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputL
 }
 
 template <typename Int>
-BestSchedule ThreePC<Int>::FindBestFLIOPScheduleRecursive(const size_t inputLength, double* totalTimes,
+IOPSchedule ThreePC<Int>::FindBestLANScheduleRecursive(const size_t inputLength, double* totalTimes,
                                                           const size_t maxLambda, const size_t maxLength)
 {
     if (inputLength == 2u)
     {
         std::vector<size_t> lambdas(1);
         lambdas[0] = 2u;
-        return BestSchedule(totalTimes[inputLength + maxLength * 2u], lambdas);
+        return IOPSchedule(totalTimes[inputLength + maxLength * 2u], lambdas);
     }
 
     double totalMin = DBL_MAX;
@@ -475,8 +475,8 @@ BestSchedule ThreePC<Int>::FindBestFLIOPScheduleRecursive(const size_t inputLeng
     size_t maxCompress = std::min(maxLambda, inputLength);
     for (size_t i = 2u; i <= maxCompress; ++i)
     {
-        BestSchedule best =
-            FindBestFLIOPScheduleRecursive(ceil(inputLength / (double)i), totalTimes, maxLambda, maxLength);
+        IOPSchedule best =
+            FindBestLANScheduleRecursive(ceil(inputLength / (double)i), totalTimes, maxLambda, maxLength);
         double currMin = totalTimes[inputLength + maxLength * i] + best.time;
         if (totalMin > currMin)
         {
@@ -486,7 +486,7 @@ BestSchedule ThreePC<Int>::FindBestFLIOPScheduleRecursive(const size_t inputLeng
         }
     }
 
-    return BestSchedule(totalMin, bestLambdas);
+    return IOPSchedule(totalMin, bestLambdas);
 }
 
 template <typename Int>
@@ -523,7 +523,7 @@ template <typename Int> void ThreePC<Int>::FindBestFLIOPSchedule(const size_t in
     std::cout << "LAN Min schedule" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
-        BestSchedule best = FindBestFLIOPScheduleRecursive(i, totalLANTimes, maxLambda, inputLength);
+        IOPSchedule best = FindBestLANScheduleRecursive(i, totalLANTimes, maxLambda, inputLength);
         std::cout << "Length: " << i;
         std::cout << " / Min time : " << std::fixed << best.time + Network::LANBaseDelayMs * 2 << std::setprecision(9)
                   << " / Best schedule : ";
@@ -545,7 +545,7 @@ template <typename Int> void ThreePC<Int>::FindBestFLIOPSchedule(const size_t in
     std::cout << "WAN Min schedule" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
-        BestSchedule best = FindBestFLIOPScheduleRecursive(i, totalWANTimes, maxLambda, inputLength);
+        IOPSchedule best = FindBestLANScheduleRecursive(i, totalWANTimes, maxLambda, inputLength);
         std::cout << "Length: " << i;
         std::cout << " / Min time : " << std::fixed << best.time + Network::WANBaseDelayMs * 2 << std::setprecision(9)
                   << " / Best schedule : ";
@@ -621,7 +621,7 @@ void ThreePC<Int>::FindBestFLIOPCoefficientSchedule(const size_t inputLength, co
     std::cout << "LAN Min schedule" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
-        BestSchedule best = FindBestFLIOPScheduleRecursive(i, totalLANTimes, maxLambda, inputLength);
+        IOPSchedule best = FindBestLANScheduleRecursive(i, totalLANTimes, maxLambda, inputLength);
         std::cout << "Length: " << i;
         std::cout << " / Min time : " << std::fixed << best.time + Network::LANBaseDelayMs * 2 << std::setprecision(9)
                   << " / Best schedule : ";
@@ -643,7 +643,7 @@ void ThreePC<Int>::FindBestFLIOPCoefficientSchedule(const size_t inputLength, co
     std::cout << "WAN Min schedule" << std::endl;
     for (size_t i = 2u; i <= inputLength; i *= 2u)
     {
-        BestSchedule best = FindBestFLIOPScheduleRecursive(i, totalWANTimes, maxLambda, inputLength);
+        IOPSchedule best = FindBestLANScheduleRecursive(i, totalWANTimes, maxLambda, inputLength);
         std::cout << "Length: " << i;
         std::cout << " / Min time : " << std::fixed << best.time + Network::WANBaseDelayMs * 2 << std::setprecision(9)
                   << " / Best schedule : ";

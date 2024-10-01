@@ -153,7 +153,7 @@ FLPCPMeasurement TwoPC<Int>::FLPCPCoefficient(const uint32_t seed, const size_t 
 template <typename Int> void TwoPC<Int>::ExperimentFLPCP()
 {
     constexpr uint32_t seed = 23571113;
-    constexpr size_t nCases = 11;
+    constexpr size_t nCases = 12;
 
     size_t j = 0;
     FLPCPMeasurement baseline[nCases];
@@ -165,7 +165,7 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCP()
     TwoPC<Int>::FLPCPWithPrecompute(seed, 1024, 1024);
     TwoPC<Int>::FLPCPCoefficient(seed, 1024, 1);
 
-    for (size_t i = 4; i <= 4096; i *= 2)
+    for (size_t i = 2; i <= 4096; i *= 2)
     {
         baseline[j] = TwoPC<Int>::FLPCP(seed, i, i);
         precomputedBaseline[j] = TwoPC<Int>::FLPCPWithPrecompute(seed, i, i);
@@ -179,14 +179,14 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCP()
     }
 
     std::cout << "Vector Length : ";
-    for (size_t i = 4; i <= 4096; i *= 2)
+    for (size_t i = 2; i <= 4096; i *= 2)
     {
         std::cout << i << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "# of G-gates : ";
-    for (size_t i = 4; i <= 4096; i *= 2)
+    for (size_t i = 2; i <= 4096; i *= 2)
     {
         std::cout << i << ", ";
     }

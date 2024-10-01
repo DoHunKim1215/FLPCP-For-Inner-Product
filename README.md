@@ -12,7 +12,6 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 * `figure` - experiment result graphs and its poltting Python code.
 * `math` - logic of primitive modular operations and polynomial interpolation.
 * `unit` - class representing proof and query.
-* `win-x64-release` - complied executable files for x64 windows environment.
 
 ## Experiments
 
@@ -20,6 +19,16 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 
 * CPU: AMD Ryzen 9 7950X 16-Core Processor @ 5.00 GHz (Only used a single core)
 * Memory: DDR5 32GB x2
+* OS: Windows 11
+* Compiler: MSVC C++
+
+### Assumptions
+
+* $Z_p$ : 61-bit Mersenne prime field
+* Hashing mehtod : SHA512 (OpenSSL SHA512 implementation has been used.)
+* LAN settings : 23Gbps bandwidth + 30 microsec. propagation delay
+* WAN settings : 8Mbps bandwidth + 40 millisec. propagation delay
+* Random seed : the fixed seed (23571113) was applied in all experiments.
 
 ### FLPCP Complexity
 

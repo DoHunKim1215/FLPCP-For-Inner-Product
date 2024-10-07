@@ -260,6 +260,11 @@ FLIOPMeasurement TwoPC<Int>::FLIOP(const size_t seed, const size_t inputLength, 
     std::memset(op0.data(), 1, inputLength * sizeof(Int));
     std::memset(op1.data(), 1, inputLength * sizeof(Int));
 
+    std::vector<Int> verOp0(inputLength);
+    std::vector<Int> verOp1(inputLength);
+    std::memset(verOp0.data(), 1, inputLength * sizeof(Int));
+    std::memset(verOp1.data(), 1, inputLength * sizeof(Int));
+
     bool isValid = true;
     Int out = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), inputLength);
 
@@ -307,24 +312,68 @@ FLIOPMeasurement TwoPC<Int>::FLIOP(const size_t seed, const size_t inputLength, 
         isValid = isValid && (out == interactiveProofs[i].GetQueryAnswer(queries[0]));
         out = interactiveProofs[i].GetQueryAnswer(queries[1]);
 
+        // Compressing
+        const size_t nPoly0 = ceil(verOp0.size() / (double)compressFactor);
+        Int* const resizedInput0 = new Int[nPoly0 * compressFactor];
+        std::memset(resizedInput0, 0, (nPoly0 * compressFactor) * sizeof(Int));
+        std::memcpy(resizedInput0, verOp0.data(), verOp0.size() * sizeof(Int));
+        std::vector<Polynomial<Int>> poly0s;
+        poly0s.reserve(nPoly0);
+        for (size_t j = 0; j < nPoly0; ++j)
+        {
+            poly0s.emplace_back(
+                Polynomial<Int>::LagrangeInterpolation(resizedInput0 + compressFactor * j, compressFactor));
+        }
+        delete[] resizedInput0;
+
+        std::vector<Int> newOp0;
+        newOp0.reserve(nPoly0);
+        for (size_t j = 0; j < nPoly0; ++j)
+        {
+            newOp0.push_back(poly0s[j].Evaluate(randoms[i]));
+        }
+        verOp0 = newOp0;
+
+        const size_t nPoly1 = ceil(verOp1.size() / (double)compressFactor);
+        Int* const resizedInput1 = new Int[nPoly1 * compressFactor];
+        std::memset(resizedInput1, 0, (nPoly1 * compressFactor) * sizeof(Int));
+        std::memcpy(resizedInput1, verOp1.data(), verOp1.size() * sizeof(Int));
+        std::vector<Polynomial<Int>> poly1s;
+        poly1s.reserve(nPoly1);
+        for (size_t j = 0; j < nPoly1; ++j)
+        {
+            poly1s.emplace_back(
+                Polynomial<Int>::LagrangeInterpolation(resizedInput1 + compressFactor * j, compressFactor));
+        }
+        delete[] resizedInput1;
+
+        std::vector<Int> newOp1;
+        newOp1.reserve(nPoly1);
+        for (size_t j = 0; j < nPoly1; ++j)
+        {
+            newOp1.push_back(poly1s[j].Evaluate(randoms[i]));
+        }
+        verOp1 = newOp1;
+
         totalQueryComplexity += 2;
     }
 
-    std::vector<Query<Int>> queries =
-        InnerProductCircuit<Int>::MakeQuery(Int::GenerateRandom(), op0.size(), op0.size());
-    const size_t nInputQueriesHalf = (queries.size() - 2u) / 2u;
-    Int gR((uint64_t)0);
-    for (size_t i = 0; i < nInputQueriesHalf; ++i)
-    {
-        gR += finalProof.GetQueryAnswer(queries[i]) * finalProof.GetQueryAnswer(queries[i + nInputQueriesHalf]);
-    }
-    isValid = isValid && (finalProof.GetQueryAnswer(queries[queries.size() - 2u]) == gR) &&
-              (finalProof.GetQueryAnswer(queries[queries.size() - 1u]) == out);
+    Int finalVerifierRandom = Int::GenerateRandom();
+    std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeQuery(finalVerifierRandom, op0.size(), op0.size());
+    
+    std::vector<Int> finalProverRandoms = finalProof.GetRandoms(2);
+    verOp0.insert(verOp0.begin(), finalProverRandoms[0]);
+    verOp1.insert(verOp1.begin(), finalProverRandoms[1]);
+    Polynomial<Int> finalOp0 = Polynomial<Int>::LagrangeInterpolation(verOp0.data(), verOp0.size());
+    Polynomial<Int> finalOp1 = Polynomial<Int>::LagrangeInterpolation(verOp1.data(), verOp1.size());
+    Int gR = finalOp0.Evaluate(finalVerifierRandom) * finalOp1.Evaluate(finalVerifierRandom);
+    isValid = isValid && (finalProof.GetQueryAnswer(queries[queries.size() - 2]) == gR) &&
+              (finalProof.GetQueryAnswer(queries[queries.size() - 1]) == out);
 
     end = std::chrono::high_resolution_clock::now();
     double verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
-    totalQueryComplexity += queries.size();
+    totalQueryComplexity += 2;
 
     return FLIOPMeasurement(totalProofSize, totalQueryComplexity, proverTime * 1e-6, verifierTime * 1e-6,
                             LANTime * 1e-6, WANTime * 1e-6, isValid);
@@ -340,6 +389,11 @@ FLIOPMeasurement TwoPC<Int>::FLIOPWithPrecompute(const size_t seed, const size_t
     std::vector<Int> op1(inputLength);
     std::memset(op0.data(), 1, inputLength * sizeof(Int));
     std::memset(op1.data(), 1, inputLength * sizeof(Int));
+
+    std::vector<Int> verOp0(inputLength);
+    std::vector<Int> verOp1(inputLength);
+    std::memset(verOp0.data(), 1, inputLength * sizeof(Int));
+    std::memset(verOp1.data(), 1, inputLength * sizeof(Int));
 
     bool isValid = true;
     Int out = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), inputLength);
@@ -390,24 +444,69 @@ FLIOPMeasurement TwoPC<Int>::FLIOPWithPrecompute(const size_t seed, const size_t
         isValid = isValid && (out == interactiveProofs[i].GetQueryAnswer(queries[0]));
         out = interactiveProofs[i].GetQueryAnswer(queries[1]);
 
+        // Compressing
+        const size_t nPoly0 = ceil(verOp0.size() / (double)compressFactor);
+        Int* const resizedInput0 = new Int[nPoly0 * compressFactor];
+        std::memset(resizedInput0, 0, (nPoly0 * compressFactor) * sizeof(Int));
+        std::memcpy(resizedInput0, verOp0.data(), verOp0.size() * sizeof(Int));
+        std::vector<Polynomial<Int>> poly0s;
+        poly0s.reserve(nPoly0);
+        for (size_t j = 0; j < nPoly0; ++j)
+        {
+            poly0s.emplace_back(
+                Polynomial<Int>::VandermondeInterpolation(resizedInput0 + compressFactor * j, compressFactor, evalToCoeff));
+        }
+        delete[] resizedInput0;
+
+        std::vector<Int> newOp0;
+        newOp0.reserve(nPoly0);
+        for (size_t j = 0; j < nPoly0; ++j)
+        {
+            newOp0.push_back(poly0s[j].Evaluate(randoms[i]));
+        }
+        verOp0 = newOp0;
+
+        const size_t nPoly1 = ceil(verOp1.size() / (double)compressFactor);
+        Int* const resizedInput1 = new Int[nPoly1 * compressFactor];
+        std::memset(resizedInput1, 0, (nPoly1 * compressFactor) * sizeof(Int));
+        std::memcpy(resizedInput1, verOp1.data(), verOp1.size() * sizeof(Int));
+        std::vector<Polynomial<Int>> poly1s;
+        poly1s.reserve(nPoly1);
+        for (size_t j = 0; j < nPoly1; ++j)
+        {
+            poly1s.emplace_back(Polynomial<Int>::VandermondeInterpolation(resizedInput1 + compressFactor * j,
+                                                                          compressFactor, evalToCoeff));
+        }
+        delete[] resizedInput1;
+
+        std::vector<Int> newOp1;
+        newOp1.reserve(nPoly1);
+        for (size_t j = 0; j < nPoly1; ++j)
+        {
+            newOp1.push_back(poly1s[j].Evaluate(randoms[i]));
+        }
+        verOp1 = newOp1;
+
         totalQueryComplexity += 2;
     }
 
-    std::vector<Query<Int>> queries =
-        InnerProductCircuit<Int>::MakeQuery(Int::GenerateRandom(), op0.size(), op0.size());
-    const size_t nInputQueriesHalf = (queries.size() - 2u) / 2u;
-    Int gR((uint64_t)0);
-    for (size_t i = 0; i < nInputQueriesHalf; ++i)
-    {
-        gR += finalProof.GetQueryAnswer(queries[i]) * finalProof.GetQueryAnswer(queries[i + nInputQueriesHalf]);
-    }
-    isValid = isValid && (finalProof.GetQueryAnswer(queries[queries.size() - 2u]) == gR) &&
-              (finalProof.GetQueryAnswer(queries[queries.size() - 1u]) == out);
+    Int finalVerifierRandom = Int::GenerateRandom();
+    std::vector<Query<Int>> queries = InnerProductCircuit<Int>::MakeQuery(finalVerifierRandom, op0.size(), op0.size());
+
+    std::vector<Int> finalProverRandoms = finalProof.GetRandoms(2);
+    verOp0.insert(verOp0.begin(), finalProverRandoms[0]);
+    verOp1.insert(verOp1.begin(), finalProverRandoms[1]);
+    SquareMatrix<Int> finalVan = SquareMatrix<Int>::GetVandermondeInverse(verOp0.size());
+    Polynomial<Int> finalOp0 = Polynomial<Int>::VandermondeInterpolation(verOp0.data(), verOp0.size(), finalVan);
+    Polynomial<Int> finalOp1 = Polynomial<Int>::VandermondeInterpolation(verOp1.data(), verOp1.size(), finalVan);
+    Int gR = finalOp0.Evaluate(finalVerifierRandom) * finalOp1.Evaluate(finalVerifierRandom);
+    isValid = isValid && (finalProof.GetQueryAnswer(queries[queries.size() - 2]) == gR) &&
+              (finalProof.GetQueryAnswer(queries[queries.size() - 1]) == out);
 
     end = std::chrono::high_resolution_clock::now();
     double verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
-    totalQueryComplexity += queries.size();
+    totalQueryComplexity += 2;
 
     return FLIOPMeasurement(totalProofSize, totalQueryComplexity, proverTime * 1e-6, verifierTime * 1e-6,
                             LANTime * 1e-6, WANTime * 1e-6, isValid);
@@ -422,6 +521,11 @@ FLIOPMeasurement TwoPC<Int>::FLIOPCoefficient(const size_t seed, const size_t in
     std::vector<Int> op1(inputLength);
     std::memset(op0.data(), 1, inputLength * sizeof(Int));
     std::memset(op1.data(), 1, inputLength * sizeof(Int));
+
+    std::vector<Int> verOp0(inputLength);
+    std::vector<Int> verOp1(inputLength);
+    std::memset(verOp0.data(), 1, inputLength * sizeof(Int));
+    std::memset(verOp1.data(), 1, inputLength * sizeof(Int));
 
     bool isValid = true;
     Int out = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), inputLength);
@@ -471,20 +575,69 @@ FLIOPMeasurement TwoPC<Int>::FLIOPCoefficient(const size_t seed, const size_t in
         isValid = isValid && (out == interactiveProofs[i].GetQueryAnswer(queries[0]));
         out = interactiveProofs[i].GetQueryAnswer(queries[1]);
 
+        // Compressing
+        const size_t nPoly0 = ceil(verOp0.size() / (double)compressFactor);
+        Int* const resizedInput0 = new Int[nPoly0 * compressFactor];
+        std::memset(resizedInput0, 0, (nPoly0 * compressFactor) * sizeof(Int));
+        std::memcpy(resizedInput0, verOp0.data(), verOp0.size() * sizeof(Int));
+        std::vector<Polynomial<Int>> poly0s;
+        poly0s.reserve(nPoly0);
+        for (size_t j = 0; j < nPoly0; ++j)
+        {
+            poly0s.emplace_back(resizedInput0 + compressFactor * j, compressFactor, true);
+        }
+        delete[] resizedInput0;
+
+        std::vector<Int> newOp0;
+        newOp0.reserve(nPoly0);
+        for (size_t j = 0; j < nPoly0; ++j)
+        {
+            newOp0.push_back(poly0s[j].Evaluate(randoms[i]));
+        }
+        verOp0 = newOp0;
+
+        const size_t nPoly1 = ceil(verOp1.size() / (double)compressFactor);
+        Int* const resizedInput1 = new Int[nPoly1 * compressFactor];
+        std::memset(resizedInput1, 0, (nPoly1 * compressFactor) * sizeof(Int));
+        std::memcpy(resizedInput1, verOp1.data(), verOp1.size() * sizeof(Int));
+        std::vector<Polynomial<Int>> poly1s;
+        poly1s.reserve(nPoly1);
+        for (size_t j = 0; j < nPoly1; ++j)
+        {
+            Int::Reverse(resizedInput1 + compressFactor * j, resizedInput1 + compressFactor * j + compressFactor - 1);
+            poly1s.emplace_back(resizedInput1 + compressFactor * j, compressFactor, true);
+        }
+        delete[] resizedInput1;
+
+        std::vector<Int> newOp1;
+        newOp1.reserve(nPoly1);
+        for (size_t j = 0; j < nPoly1; ++j)
+        {
+            newOp1.push_back(poly1s[j].Evaluate(randoms[i]));
+        }
+        verOp1 = newOp1;
+
         totalQueryComplexity += 2;
     }
 
+    Int finalVerifierRandom = Int::GenerateRandom();
     std::vector<Query<Int>> queries =
-        InnerProductCircuit<Int>::MakeCoefficientQuery(Int::GenerateRandom(), op0.size(), 1);
-    isValid = isValid &&
-              (finalProof.GetQueryAnswer(queries[0]) * finalProof.GetQueryAnswer(queries[1]) ==
-               finalProof.GetQueryAnswer(queries[2])) &&
+        InnerProductCircuit<Int>::MakeCoefficientQuery(finalVerifierRandom, op0.size(), 1);
+
+    std::vector<Int> finalProverRandoms = finalProof.GetRandoms(2);
+    verOp0.insert(verOp0.begin(), finalProverRandoms[0]);
+    verOp1.insert(verOp1.begin(), finalProverRandoms[1]);
+    std::reverse(verOp1.begin() + 1, verOp1.end());
+    Polynomial<Int> finalOp0(verOp0.data(), verOp0.size(), true);
+    Polynomial<Int> finalOp1(verOp1.data(), verOp1.size(), true);
+    Int gR = finalOp0.Evaluate(finalVerifierRandom) * finalOp1.Evaluate(finalVerifierRandom);
+    isValid = isValid && (finalProof.GetQueryAnswer(queries[2]) == gR) &&
               (finalProof.GetQueryAnswer(queries[3]) == out);
 
     end = std::chrono::high_resolution_clock::now();
     double verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
-    totalQueryComplexity += 4;
+    totalQueryComplexity += 2;
 
     return FLIOPMeasurement(totalProofSize, totalQueryComplexity, proverTime * 1e-6, verifierTime * 1e-6,
                             LANTime * 1e-6, WANTime * 1e-6, isValid);
@@ -513,7 +666,9 @@ template <typename Int> void TwoPC<Int>::ExperimentFLIOP()
         coefficientVersion[j] = TwoPC<Int>::FLIOPCoefficient(seed, inputLength, i);
         if (!baseline[j].isVaild || !precomputation[j].isVaild || !coefficientVersion[j].isVaild)
         {
-            std::cout << "Invalid!" << std::endl;
+            std::cerr << "baseline / lambda : " << i << " / Valid : " << baseline[j].isVaild << std::endl;
+            std::cerr << "precomputation / lambda : " << i << " / Valid : " << precomputation[j].isVaild << std::endl;
+            std::cerr << "coefficientVersion / lambda : " << i << " / Valid : " << coefficientVersion[j].isVaild << std::endl;
             return;
         }
         ++j;

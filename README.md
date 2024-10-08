@@ -81,8 +81,8 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
       <th> Improvement Proportion in WAN </th>
     </tr>
     <tr>
-      <td> <img src="./figure/mpc_baseline/3pc_Wan_total.png" /> </td>
-      <td> <img src="./figure/mpc_baseline/Wan_portion.png" /> </td>
+      <td> <img src="./figure/mpc_baseline/3pc_wan_total.png" /> </td>
+      <td> <img src="./figure/mpc_baseline/wan_portion.png" /> </td>
     </tr>
   </table>
 </div>
@@ -144,8 +144,8 @@ Length: 65536 / Min time : 97.030700000 / Best schedule : 5 5 6 6 5 5 3
       <th> Improvement Proportion in WAN </th>
     </tr>
     <tr>
-      <td> <img src="./figure/mpc_coefficient/3pc_Wan_total.png" /> </td>
-      <td> <img src="./figure/mpc_coefficient/Wan_portion.png" /> </td>
+      <td> <img src="./figure/mpc_coefficient/3pc_wan_total.png" /> </td>
+      <td> <img src="./figure/mpc_coefficient/wan_portion.png" /> </td>
     </tr>
   </table>
 </div>
@@ -207,8 +207,8 @@ Length: 65536 / Min time : 87.916100000 / Best schedule : 13 11 11 6 7
       <th> Improvement Proportion in WAN </th>
     </tr>
     <tr>
-      <td> <img src="./figure/comparison_optimum/3pc_Wan_total.png" /> </td>
-      <td> <img src="./figure/comparison_optimum/Wan_portion.png" /> </td>
+      <td> <img src="./figure/comparison_optimum/3pc_wan_total.png" /> </td>
+      <td> <img src="./figure/comparison_optimum/wan_portion.png" /> </td>
     </tr>
   </table>
 </div>

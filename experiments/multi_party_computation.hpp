@@ -170,9 +170,9 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
         }
         
 
-        // Communication - Verifiers send their own 'verificationShares' value, its own random, general random.
-        LANTime += Network::GetLANPayloadDelay(3 * sizeof(Int));
-        WANTime += Network::GetWANPayloadDelay(3 * sizeof(Int));
+        // Communication - Verifiers send their own 'verificationShares' value, its own random.
+        LANTime += Network::GetLANPayloadDelay(2 * sizeof(Int));
+        WANTime += Network::GetWANPayloadDelay(2 * sizeof(Int));
 
 
         // Collector (one of the verifiers)
@@ -183,11 +183,6 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
             verificationValue += verificationShares[i];
         }
         isValid = isValid && (verificationValue == Int((uint64_t)0));
-
-        for (size_t i = 1; i < nVerifiers; ++i)
-        {
-            isValid = isValid && (commonRandom == commonRandom);
-        }
 
         SHA512_CTX vctx;
         unsigned char vdigest[SHA512_DIGEST_LENGTH];
@@ -332,9 +327,9 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
         }
 
         // Communication - Verifiers share two evaluationShares, one varificationShare,
-        // one resultShare, private random, global random.
-        LANTime += Network::GetLANPayloadDelay(6 * sizeof(Int));
-        WANTime += Network::GetWANPayloadDelay(6 * sizeof(Int));
+        // one resultShare, private random.
+        LANTime += Network::GetLANPayloadDelay(5 * sizeof(Int));
+        WANTime += Network::GetWANPayloadDelay(5 * sizeof(Int));
 
         // Collector
         start = std::chrono::high_resolution_clock::now();
@@ -354,11 +349,6 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
             qs += evaluationShares[i + nVerifiers];
         }
         isValid = isValid && (verificationValue == ps * qs);
-
-        for (size_t i = 1; i < nVerifiers; ++i)
-        {
-            isValid = isValid && (commonRandom == commonRandom);
-        }
 
         Int resultValue((uint64_t)0);
         for (size_t i = 0; i < nVerifiers; ++i)
@@ -476,9 +466,9 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
         }
 
 
-        // Communication - Verifiers send their own 'verificationShares' value, its own random, general random.
-        LANTime += Network::GetLANPayloadDelay(3 * sizeof(Int));
-        WANTime += Network::GetWANPayloadDelay(3 * sizeof(Int));
+        // Communication - Verifiers send their own 'verificationShares' value, its own random.
+        LANTime += Network::GetLANPayloadDelay(2 * sizeof(Int));
+        WANTime += Network::GetWANPayloadDelay(2 * sizeof(Int));
 
 
         // Collector (one of the verifiers)
@@ -489,11 +479,6 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
             verificationValue += verificationShares[i];
         }
         isValid = isValid && (verificationValue == Int((uint64_t)0));
-
-        for (size_t i = 1; i < nVerifiers; ++i)
-        {
-            isValid = isValid && (commonRandom == commonRandom);
-        }
 
         SHA512_CTX vctx;
         unsigned char vdigest[SHA512_DIGEST_LENGTH];
@@ -631,9 +616,9 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
         }
 
         // Communication - Verifiers share two evaluationShares, one varificationShare,
-        // one resultShare, private random, global random.
-        LANTime += Network::GetLANPayloadDelay(6 * sizeof(Int));
-        WANTime += Network::GetWANPayloadDelay(6 * sizeof(Int));
+        // one resultShare, private random.
+        LANTime += Network::GetLANPayloadDelay(5 * sizeof(Int));
+        WANTime += Network::GetWANPayloadDelay(5 * sizeof(Int));
 
         // Collector
         start = std::chrono::high_resolution_clock::now();
@@ -653,11 +638,6 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
             qs += evaluationShares[i + nVerifiers];
         }
         isValid = isValid && (verificationValue == ps * qs);
-
-        for (size_t i = 1; i < nVerifiers; ++i)
-        {
-            isValid = isValid && (commonRandom == commonRandom);
-        }
 
         Int resultValue((uint64_t)0);
         for (size_t i = 0; i < nVerifiers; ++i)
@@ -741,14 +721,11 @@ template <typename Int> IOPSchedule MPC<Int>::FindBestLANSchedule(const size_t i
 
 template <typename Int> IOPSchedule MPC<Int>::FindBestLANScheduleRecursive(const size_t inputLength)
 {
-    if (inputLength <= 2)
+    if (inputLength <= 1)
     {
-        std::vector<size_t> lambdas(1);
-        std::vector<OneRoundMeasurement> trace(1);
-        lambdas[0] = 2;
-        trace[0] = mOneRoundMeasures[2][inputLength];
-        double totalTime = trace[0].proverTimeNs + trace[0].verifierTimeNs + trace[0].communicationTimeNsInLAN;
-        return IOPSchedule(totalTime, lambdas, trace);
+        std::vector<size_t> lambdas;
+        std::vector<OneRoundMeasurement> trace;
+        return IOPSchedule(0., lambdas, trace);
     }
 
     double totalMin = DBL_MAX;
@@ -784,14 +761,11 @@ template <typename Int> IOPSchedule MPC<Int>::FindBestWANSchedule(const size_t i
 
 template <typename Int> IOPSchedule MPC<Int>::FindBestWANScheduleRecursive(const size_t inputLength)
 {
-    if (inputLength <= 2)
+    if (inputLength <= 1)
     {
-        std::vector<size_t> lambdas(1);
-        std::vector<OneRoundMeasurement> trace(1);
-        lambdas[0] = 2;
-        trace[0] = mOneRoundMeasures[2][inputLength];
-        double totalTime = trace[0].proverTimeNs + trace[0].verifierTimeNs + trace[0].communicationTimeNsInWAN;
-        return IOPSchedule(totalTime, lambdas, trace);
+        std::vector<size_t> lambdas;
+        std::vector<OneRoundMeasurement> trace;
+        return IOPSchedule(0., lambdas, trace);
     }
 
     double totalMin = DBL_MAX;
@@ -826,15 +800,13 @@ template <typename Int> IOPSchedule MPC<Int>::FindLANDelay(const size_t inputLen
 
 template <typename Int> IOPSchedule MPC<Int>::FindLANDelayRecursive(const size_t inputLength)
 {
-    if (inputLength <= 2)
+    if (inputLength <= 1)
     {
-        std::vector<size_t> lambdas(1);
-        std::vector<OneRoundMeasurement> trace(1);
-        lambdas[0] = 2;
-        trace[0] = mOneRoundMeasures[2][inputLength];
-        double totalTime = trace[0].proverTimeNs + trace[0].verifierTimeNs + trace[0].communicationTimeNsInLAN;
-        return IOPSchedule(totalTime, lambdas, trace);
+        std::vector<size_t> lambdas;
+        std::vector<OneRoundMeasurement> trace;
+        return IOPSchedule(0., lambdas, trace);
     }
+
     IOPSchedule schedule = FindLANDelayRecursive(ceil(inputLength / (double)2));
 
     double newTotal = mOneRoundMeasures[2][inputLength].proverTimeNs +
@@ -857,15 +829,13 @@ template <typename Int> IOPSchedule MPC<Int>::FindWANDelay(const size_t inputLen
 
 template <typename Int> IOPSchedule MPC<Int>::FindWANDelayRecursive(const size_t inputLength)
 {
-    if (inputLength <= 2)
+    if (inputLength <= 1)
     {
-        std::vector<size_t> lambdas(1);
-        std::vector<OneRoundMeasurement> trace(1);
-        lambdas[0] = 2;
-        trace[0] = mOneRoundMeasures[2][inputLength];
-        double totalTime = trace[0].proverTimeNs + trace[0].verifierTimeNs + trace[0].communicationTimeNsInWAN;
-        return IOPSchedule(totalTime, lambdas, trace);
+        std::vector<size_t> lambdas;
+        std::vector<OneRoundMeasurement> trace;
+        return IOPSchedule(0., lambdas, trace);
     }
+
     IOPSchedule schedule = FindWANDelayRecursive(ceil(inputLength / (double)2));
 
     double newTotal = mOneRoundMeasures[2][inputLength].proverTimeNs +
@@ -905,7 +875,7 @@ template <typename Int> void MPC<Int>::FindBestFLIOPSchedule(bool coefficient)
     for (size_t i = 2; i <= mInputLength; i *= 2)
     {
         IOPSchedule best = FindBestLANSchedule(i);
-        outputs[j] = best.time * 1e-6 + Network::LANBaseDelayMs;
+        outputs[j] = best.time * 1e-6 + 2 * Network::LANBaseDelayMs;
 
         std::cout << "Length: " << i << " / Min time : ";
         std::cout << std::fixed << outputs[j] << std::setprecision(9);
@@ -927,7 +897,7 @@ template <typename Int> void MPC<Int>::FindBestFLIOPSchedule(bool coefficient)
         }
         proverTimeOutputs[j] *= 1e-6;
         verifierTimeOutputs[j] *= 1e-6;
-        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + Network::LANBaseDelayMs;
+        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + 2 * Network::LANBaseDelayMs;
 
         ++j;
     }
@@ -962,7 +932,7 @@ template <typename Int> void MPC<Int>::FindBestFLIOPSchedule(bool coefficient)
     {
         IOPSchedule best = FindBestWANSchedule(i);
         std::cout << "Length: " << i;
-        std::cout << " / Min time : " << std::fixed << best.time * 1e-6 + Network::WANBaseDelayMs
+        std::cout << " / Min time : " << std::fixed << best.time * 1e-6 + 2 * Network::WANBaseDelayMs
                   << std::setprecision(9);
         std::cout << " / Best schedule : ";
         for (size_t k = 0; k < best.lambdas.size(); ++k)
@@ -971,7 +941,7 @@ template <typename Int> void MPC<Int>::FindBestFLIOPSchedule(bool coefficient)
         }
         std::cout << std::endl;
 
-        outputs[j] = best.time * 1e-6 + Network::WANBaseDelayMs;
+        outputs[j] = best.time * 1e-6 + 2 * Network::WANBaseDelayMs;
 
         proverTimeOutputs[j] = 0.;
         verifierTimeOutputs[j] = 0.;
@@ -984,7 +954,7 @@ template <typename Int> void MPC<Int>::FindBestFLIOPSchedule(bool coefficient)
         }
         proverTimeOutputs[j] *= 1e-6;
         verifierTimeOutputs[j] *= 1e-6;
-        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + Network::WANBaseDelayMs;
+        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + 2 * Network::WANBaseDelayMs;
 
         ++j;
     }
@@ -1018,9 +988,9 @@ template <typename Int> void MPC<Int>::FindBestFLIOPSchedule(bool coefficient)
     for (size_t i = 2; i <= mInputLength; i *= 2)
     {
         IOPSchedule schedule = FindLANDelay(i);
-        std::cout << "Length: " << i << " / Time : " << std::fixed << schedule.time * 1e-6 + Network::LANBaseDelayMs
+        std::cout << "Length: " << i << " / Time : " << std::fixed << schedule.time * 1e-6 + 2 * Network::LANBaseDelayMs
                   << std::setprecision(9) << std::endl;
-        outputs[j] = schedule.time * 1e-6 + Network::LANBaseDelayMs;
+        outputs[j] = schedule.time * 1e-6 + 2 * Network::LANBaseDelayMs;
 
         proverTimeOutputs[j] = 0.;
         verifierTimeOutputs[j] = 0.;
@@ -1033,7 +1003,7 @@ template <typename Int> void MPC<Int>::FindBestFLIOPSchedule(bool coefficient)
         }
         proverTimeOutputs[j] *= 1e-6;
         verifierTimeOutputs[j] *= 1e-6;
-        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + Network::LANBaseDelayMs;
+        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + 2 * Network::LANBaseDelayMs;
 
         ++j;
     }
@@ -1067,9 +1037,9 @@ template <typename Int> void MPC<Int>::FindBestFLIOPSchedule(bool coefficient)
     for (size_t i = 2; i <= mInputLength; i *= 2)
     {
         IOPSchedule schedule = FindWANDelay(i);
-        std::cout << "Length: " << i << " / Time : " << std::fixed << schedule.time * 1e-6 + Network::WANBaseDelayMs
+        std::cout << "Length: " << i << " / Time : " << std::fixed << schedule.time * 1e-6 + 2 * Network::WANBaseDelayMs
                   << std::setprecision(9) << std::endl;
-        outputs[j] = schedule.time * 1e-6 + Network::WANBaseDelayMs;
+        outputs[j] = schedule.time * 1e-6 + 2 * Network::WANBaseDelayMs;
 
         proverTimeOutputs[j] = 0.;
         verifierTimeOutputs[j] = 0.;
@@ -1082,7 +1052,7 @@ template <typename Int> void MPC<Int>::FindBestFLIOPSchedule(bool coefficient)
         }
         proverTimeOutputs[j] *= 1e-6;
         verifierTimeOutputs[j] *= 1e-6;
-        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + Network::WANBaseDelayMs;
+        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + 2 * Network::WANBaseDelayMs;
 
         ++j;
     }

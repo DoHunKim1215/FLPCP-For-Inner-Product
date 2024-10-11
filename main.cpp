@@ -1,12 +1,11 @@
 ﻿#include "math\mpint64.hpp"
-#include "experiments\multi_party_computation.hpp"
+#include "experiments\two_party_computation.hpp"
 
 #include "math\sha512.hpp"
 
 int main(int argc, char* argv[])
 {
-    MPC<Mpint64> mpc(23571113, 65536, 64, 9);
-    mpc.FindBestFLIOPSchedule(true);
+    TwoPC<Mpint64>::ExperimentFLIOP();
     system("pause");
     return 0;
 }

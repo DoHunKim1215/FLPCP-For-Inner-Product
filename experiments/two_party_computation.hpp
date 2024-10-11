@@ -496,7 +496,12 @@ FLIOPMeasurement TwoPC<Int>::FLIOPWithPrecompute(const size_t seed, const size_t
     std::vector<Int> finalProverRandoms = finalProof.GetRandoms(2);
     verOp0.insert(verOp0.begin(), finalProverRandoms[0]);
     verOp1.insert(verOp1.begin(), finalProverRandoms[1]);
+    end = std::chrono::high_resolution_clock::now();
+    double verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
     SquareMatrix<Int> finalVan = SquareMatrix<Int>::GetVandermondeInverse(verOp0.size());
+
+    start = std::chrono::high_resolution_clock::now();
     Polynomial<Int> finalOp0 = Polynomial<Int>::VandermondeInterpolation(verOp0.data(), verOp0.size(), finalVan);
     Polynomial<Int> finalOp1 = Polynomial<Int>::VandermondeInterpolation(verOp1.data(), verOp1.size(), finalVan);
     Int gR = finalOp0.Evaluate(finalVerifierRandom) * finalOp1.Evaluate(finalVerifierRandom);
@@ -504,7 +509,7 @@ FLIOPMeasurement TwoPC<Int>::FLIOPWithPrecompute(const size_t seed, const size_t
               (finalProof.GetQueryAnswer(queries[queries.size() - 1]) == out);
 
     end = std::chrono::high_resolution_clock::now();
-    double verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
     totalQueryComplexity += 2;
 

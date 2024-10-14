@@ -1,0 +1,39 @@
+Simulating FLIOP (baseline, precomputed, coefficient) 10 times for input vector length 4096 and compression factor from 2 to 2048.
+Starting warm up...
+Finished!
+
+Start the simulations!
+Finished compression factor (2)
+Finished compression factor (4)
+Finished compression factor (8)
+Finished compression factor (16)
+Finished compression factor (32)
+Finished compression factor (64)
+Finished compression factor (128)
+Finished compression factor (256)
+Finished compression factor (512)
+Finished compression factor (1024)
+Finished compression factor (2048)
+
+[Simulation Results]
+* Common info
+Vector Length : 4096
+Compression Factor : 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048,
+Proof Length : 320, 368, 512, 776, 1096, 2064, 2576, 4368, 8336, 16464, 32816,
+Query Complexity : 24, 12, 8, 6, 6, 4, 4, 4, 4, 4, 4,
+
+* Prover Time
+Baseline : 7.032490, 5.0206, 6.7418, 15.5288, 50.4706, 186.3727, 731.9195, 2887.4468, 11535.4456, 45877.5325, 183184.5936,
+Precomputation : 1.6459, 0.8230, 0.7588, 1.1029, 1.6629, 5.9558, 6.2380, 11.3660, 22.5444, 44.8601, 89.7458,
+Coefficient : 1.5261, 0.6485, 0.4768, 0.4819, 0.6399, 1.0453, 1.8920, 3.5483, 6.9634, 13.8757, 27.4585,
+
+* Verifier Time
+Baseline : 6.2625, 4.6627, 6.4649, 15.2577, 49.9712, 187.0101, 731.3495, 2880.3821, 11508.7314, 46004.6838, 183175.5013,
+Precomputation : 0.8911, 0.4615, 0.4874, 0.7381, 1.1306, 3.4052, 4.4227, 8.3598, 17.4641, 38.5578, 91.2784,
+Coefficient : 0.4995, 0.2237, 0.1515, 0.1054, 0.0893, 0.0914, 0.0841, 0.1098, 0.1035, 0.1279, 0.1827,
+
+* Communication Time
+LAN Time : 0.0302, 0.0302, 0.0303, 0.0304, 0.0304, 0.0311, 0.0311, 0.0316, 0.0330, 0.0358, 0.0415,
+WAN Time : 40.0448, 40.0528, 40.0736, 40.1128, 40.1256, 40.3184, 40.3184, 40.4720, 40.8560, 41.6624, 43.2944,
+------------------------------------------------------
+Press any key to continue . . .

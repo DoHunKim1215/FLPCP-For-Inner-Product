@@ -1,0 +1,36 @@
+Simulating FLPCP (baseline, precomputed, coefficient) 3 times for input vector lengths from 2 to 4096.
+Starting warm up...
+Finished!
+
+Start the simulations!
+Finished input length (2)
+Finished input length (4)
+Finished input length (8)
+Finished input length (16)
+Finished input length (32)
+Finished input length (64)
+Finished input length (128)
+Finished input length (256)
+Finished input length (512)
+Finished input length (1024)
+Finished input length (2048)
+Finished input length (4096)
+
+[Simulation Results]
+* Common info
+Vector Length : 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096,
+# of G-gates : 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096,
+Proof Length : 56, 88, 152, 280, 536, 1048, 2072, 4120, 8216, 16408, 32792, 65560,
+Query Complexity : 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+
+* Prover Time
+Baseline : 0.003267, 0.0054, 0.0155, 0.0683, 0.4138, 3.0912, 23.3190, 185.4024, 1440.2577, 11518.6699, 91764.1160, 732102.8061,
+Precomputation : 0.0007, 0.0008, 0.0017, 0.0048, 0.0133, 0.0481, 0.1908, 0.7279, 2.8545, 11.4161, 45.4542, 182.6980,
+Coefficient : 0.0004, 0.0004, 0.0008, 0.0016, 0.0045, 0.0151, 0.0652, 0.2218, 0.8604, 3.4198, 13.6018, 54.7555,
+
+* Verifier Time
+Baseline : 0.0033, 0.0079, 0.0258, 0.0906, 0.3471, 1.3382, 5.2696, 21.3635, 83.5475, 334.4002, 1333.5014, 5372.8210,
+Precomputation : 0.0003, 0.0003, 0.0005, 0.0010, 0.0019, 0.0037, 0.0072, 0.0143, 0.0284, 0.0568, 0.1140, 0.2343,
+Coefficient : 0.0009, 0.0014, 0.0022, 0.0033, 0.0069, 0.0135, 0.0280, 0.0661, 0.1009, 0.2030, 0.3892, 0.7836,
+------------------------------------------------------
+Press any key to continue . . .

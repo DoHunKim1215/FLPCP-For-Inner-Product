@@ -16,14 +16,14 @@ public:
     static FLPCPMeasurement FLPCP(const uint32_t seed, const size_t inputLength, const size_t nGGate);
     static FLPCPMeasurement FLPCPWithPrecompute(const uint32_t seed, const size_t inputLength, const size_t nGGate);
     static FLPCPMeasurement FLPCPCoefficient(const uint32_t seed, const size_t inputLength, const size_t nGGate);
-    static void ExperimentFLPCP();
+    static void ExperimentFLPCP(size_t nCases, size_t nExperiments);
 
     // Fully Linear IOP
     static FLIOPMeasurement FLIOP(const size_t seed, const size_t inputLength, const size_t compressFactor);
     static FLIOPMeasurement FLIOPWithPrecompute(const size_t seed, const size_t inputLength,
                                                 const size_t compressFactor);
     static FLIOPMeasurement FLIOPCoefficient(const size_t seed, const size_t inputLength, const size_t compressFactor);
-    static void ExperimentFLIOP();
+    static void ExperimentFLIOP(size_t nCases, size_t nExperiments);
 };
 
 template <typename Int>
@@ -32,9 +32,16 @@ FLPCPMeasurement TwoPC<Int>::FLPCP(const uint32_t seed, const size_t inputLength
     Int::SetSeed(seed);
 
     Int* const op0 = new Int[inputLength];
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
     Int* const op1 = new Int[inputLength];
-    std::memset(op0, 1, inputLength * sizeof(Int));
-    std::memset(op1, 1, inputLength * sizeof(Int));
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
+
     const Int circuitOutput = InnerProductCircuit<Int>::Forward(op0, op1, inputLength);
 
     // Prover make proof vector : (inputs || constant terms || coefficients)
@@ -74,9 +81,16 @@ FLPCPMeasurement TwoPC<Int>::FLPCPWithPrecompute(const uint32_t seed, const size
     Int::SetSeed(seed);
 
     Int* const op0 = new Int[inputLength];
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
     Int* const op1 = new Int[inputLength];
-    std::memset(op0, 1, inputLength * sizeof(Int));
-    std::memset(op1, 1, inputLength * sizeof(Int));
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
+
     const Int circuitOutput = InnerProductCircuit<Int>::Forward(op0, op1, inputLength);
     SquareMatrix<Int> vandermondeInv = SquareMatrix<Int>::GetVandermondeInverse(nGGate + 1);
 
@@ -119,9 +133,16 @@ FLPCPMeasurement TwoPC<Int>::FLPCPCoefficient(const uint32_t seed, const size_t 
     Int::SetSeed(seed);
 
     Int* const op0 = new Int[inputLength];
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
     Int* const op1 = new Int[inputLength];
-    std::memset(op0, 1, inputLength * sizeof(Int));
-    std::memset(op1, 1, inputLength * sizeof(Int));
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
+
     const Int circuitOutput = InnerProductCircuit<Int>::Forward(op0, op1, inputLength);
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -150,45 +171,81 @@ FLPCPMeasurement TwoPC<Int>::FLPCPCoefficient(const uint32_t seed, const size_t 
     return FLPCPMeasurement(proof.GetBytes(), queries.size(), proverTime * 1e-6, verifierTime * 1e-6, isValid);
 }
 
-template <typename Int> void TwoPC<Int>::ExperimentFLPCP()
+template <typename Int> void TwoPC<Int>::ExperimentFLPCP(size_t nCases, size_t nExperiments)
 {
     constexpr uint32_t seed = 23571113;
-    constexpr size_t nCases = 12;
+    const size_t last = pow(2, nCases);
 
-    size_t j = 0;
-    FLPCPMeasurement baseline[nCases];
-    FLPCPMeasurement precomputedBaseline[nCases];
-    FLPCPMeasurement coefficientVersion[nCases];
+    std::cout << "Simulating FLPCP (baseline, precomputed, coefficient) " << nExperiments
+              << " times for input vector lengths from 2 to " << last << "." << std::endl;
+
+    FLPCPMeasurement* baseline = new FLPCPMeasurement[nCases];
+    FLPCPMeasurement* precomputedBaseline = new FLPCPMeasurement[nCases];
+    FLPCPMeasurement* coefficientVersion = new FLPCPMeasurement[nCases];
+
+    std::cout << "Starting warm up..." << std::endl;
 
     // Warm up
     TwoPC<Int>::FLPCP(seed, 1024, 1024);
     TwoPC<Int>::FLPCPWithPrecompute(seed, 1024, 1024);
     TwoPC<Int>::FLPCPCoefficient(seed, 1024, 1);
 
-    for (size_t i = 2; i <= 4096; i *= 2)
+    std::cout << "Finished!" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Start the simulations!" << std::endl;
+
+    for (size_t i = 1; i <= nCases; ++i)
     {
-        baseline[j] = TwoPC<Int>::FLPCP(seed, i, i);
-        precomputedBaseline[j] = TwoPC<Int>::FLPCPWithPrecompute(seed, i, i);
-        coefficientVersion[j] = TwoPC<Int>::FLPCPCoefficient(seed, i, 1);
-        if (!baseline[j].isVaild || !precomputedBaseline[j].isVaild || !coefficientVersion[j].isVaild)
+        size_t vectorLength = pow(2, i);
+
+        baseline[i - 1] = TwoPC<Int>::FLPCP(seed, vectorLength, vectorLength);
+        precomputedBaseline[i - 1] = TwoPC<Int>::FLPCPWithPrecompute(seed, vectorLength, vectorLength);
+        coefficientVersion[i - 1] = TwoPC<Int>::FLPCPCoefficient(seed, vectorLength, 1);
+
+        for (size_t j = 0; j < nExperiments - 1; ++j)
         {
-            std::cout << "Invalid!" << std::endl;
+            baseline[i - 1] += TwoPC<Int>::FLPCP(seed, vectorLength, vectorLength);
+            precomputedBaseline[i - 1] += TwoPC<Int>::FLPCPWithPrecompute(seed, vectorLength, vectorLength);
+            coefficientVersion[i - 1] += TwoPC<Int>::FLPCPCoefficient(seed, vectorLength, 1);
+        }
+
+        baseline[i - 1] /= nExperiments;
+        precomputedBaseline[i - 1] /= nExperiments;
+        coefficientVersion[i - 1] /= nExperiments;
+
+        if (!baseline[i - 1].isVaild)
+        {
+            std::cout << "Invalid in FLPCP baseline (" << vectorLength << ")" << std::endl;
             return;
         }
-        ++j;
+        if (!precomputedBaseline[i - 1].isVaild)
+        {
+            std::cout << "Invalid in FLPCP precomputed (" << vectorLength << ")" << std::endl;
+            return;
+        }
+        if (!coefficientVersion[i - 1].isVaild)
+        {
+            std::cout << "Invalid in FLPCP coefficient (" << vectorLength << ")" << std::endl;
+            return;
+        }
+
+        std::cout << "Finished input length (" << vectorLength << ")" << std::endl;
     }
 
+    std::cout << std::endl;
+    std::cout << "[Simulation Results]" << std::endl;
+    std::cout << "* Common info" << std::endl;
     std::cout << "Vector Length : ";
-    for (size_t i = 2; i <= 4096; i *= 2)
+    for (size_t i = 1; i <= nCases; ++i)
     {
-        std::cout << i << ", ";
+        std::cout << (size_t)pow(2, i) << ", ";
     }
     std::cout << std::endl;
 
     std::cout << "# of G-gates : ";
-    for (size_t i = 2; i <= 4096; i *= 2)
+    for (size_t i = 1; i <= nCases; ++i)
     {
-        std::cout << i << ", ";
+        std::cout << (size_t)pow(2, i) << ", ";
     }
     std::cout << std::endl;
 
@@ -207,47 +264,55 @@ template <typename Int> void TwoPC<Int>::ExperimentFLPCP()
     std::cout << std::endl;
     std::cout << std::endl;
 
-    std::cout << "Prover Time (baseline) : ";
+    std::cout << "* Prover Time" << std::endl;
+    std::cout << "Baseline : ";
     for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << baseline[i].proverTime << std::setprecision(9) << ", ";
+        std::cout << std::fixed << baseline[i].proverTime << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
 
-    std::cout << "Prover Time (precomputation) : ";
+    std::cout << "Precomputation : ";
     for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << precomputedBaseline[i].proverTime << std::setprecision(9) << ", ";
+        std::cout << std::fixed << precomputedBaseline[i].proverTime << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
 
-    std::cout << "Prover Time (coefficient version) : ";
+    std::cout << "Coefficient : ";
     for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << coefficientVersion[i].proverTime << std::setprecision(9) << ", ";
+        std::cout << std::fixed << coefficientVersion[i].proverTime << std::setprecision(4) << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "* Verifier Time" << std::endl;
+    std::cout << "Baseline : ";
+    for (size_t i = 0; i < nCases; ++i)
+    {
+        std::cout << std::fixed << baseline[i].verifierTime << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
 
-    std::cout << "Verifier Time (baseline) : ";
+    std::cout << "Precomputation : ";
     for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << baseline[i].verifierTime << std::setprecision(9) << ", ";
+        std::cout << std::fixed << precomputedBaseline[i].verifierTime << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
 
-    std::cout << "Verifier Time (precomputation) : ";
+    std::cout << "Coefficient : ";
     for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << precomputedBaseline[i].verifierTime << std::setprecision(9) << ", ";
+        std::cout << std::fixed << coefficientVersion[i].verifierTime << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
+    std::cout << "------------------------------------------------------" << std::endl;
 
-    std::cout << "Verifier Time (coefficient version) : ";
-    for (size_t i = 0; i < nCases; ++i)
-    {
-        std::cout << std::fixed << coefficientVersion[i].verifierTime << std::setprecision(9) << ", ";
-    }
-    std::cout << std::endl;
+    delete[] baseline;
+    delete[] precomputedBaseline;
+    delete[] coefficientVersion;
 }
 
 template <typename Int>
@@ -256,14 +321,18 @@ FLIOPMeasurement TwoPC<Int>::FLIOP(const size_t seed, const size_t inputLength, 
     Int::SetSeed(seed);
 
     std::vector<Int> op0(inputLength);
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
     std::vector<Int> op1(inputLength);
-    std::memset(op0.data(), 1, inputLength * sizeof(Int));
-    std::memset(op1.data(), 1, inputLength * sizeof(Int));
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
 
-    std::vector<Int> verOp0(inputLength);
-    std::vector<Int> verOp1(inputLength);
-    std::memset(verOp0.data(), 1, inputLength * sizeof(Int));
-    std::memset(verOp1.data(), 1, inputLength * sizeof(Int));
+    std::vector<Int> verOp0 = op0;
+    std::vector<Int> verOp1 = op1;
 
     bool isValid = true;
     Int out = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), inputLength);
@@ -386,14 +455,18 @@ FLIOPMeasurement TwoPC<Int>::FLIOPWithPrecompute(const size_t seed, const size_t
     Int::SetSeed(seed);
 
     std::vector<Int> op0(inputLength);
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
     std::vector<Int> op1(inputLength);
-    std::memset(op0.data(), 1, inputLength * sizeof(Int));
-    std::memset(op1.data(), 1, inputLength * sizeof(Int));
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
 
-    std::vector<Int> verOp0(inputLength);
-    std::vector<Int> verOp1(inputLength);
-    std::memset(verOp0.data(), 1, inputLength * sizeof(Int));
-    std::memset(verOp1.data(), 1, inputLength * sizeof(Int));
+    std::vector<Int> verOp0 = op0;
+    std::vector<Int> verOp1 = op1;
 
     bool isValid = true;
     Int out = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), inputLength);
@@ -407,14 +480,21 @@ FLIOPMeasurement TwoPC<Int>::FLIOPWithPrecompute(const size_t seed, const size_t
     std::vector<Int> randoms;
     randoms.reserve(nTotalRounds);
 
-    SquareMatrix<Int> evalToCoeff = SquareMatrix<Int>::GetVandermondeInverse(compressFactor);
+    SquareMatrix<Int> IntermediateVanInv = SquareMatrix<Int>::GetVandermondeInverse(compressFactor);
+
+    size_t finalRoundLength = op0.size();
+    while (finalRoundLength > compressFactor)
+    {
+        finalRoundLength = ceil(finalRoundLength / (double)compressFactor);
+    }
+    SquareMatrix<Int> finalVanInv = SquareMatrix<Int>::GetVandermondeInverse(finalRoundLength + 1);
 
     // Prover
     auto start = std::chrono::high_resolution_clock::now();
     while (ceil(op0.size() / (double)compressFactor) > 1)
     {
         InteractiveProof<Int> proof =
-            InnerProductCircuit<Int>::MakeRoundProofWithPrecompute(op0.data(), op1.data(), op0.size(), compressFactor, evalToCoeff);
+            InnerProductCircuit<Int>::MakeRoundProofWithPrecompute(op0.data(), op1.data(), op0.size(), compressFactor, IntermediateVanInv);
         Int random = proof.GetRandomFromOracle();
         op0 = proof.EvaluatePolyPs(random);
         op1 = proof.EvaluatePolyQs(random);
@@ -454,7 +534,7 @@ FLIOPMeasurement TwoPC<Int>::FLIOPWithPrecompute(const size_t seed, const size_t
         for (size_t j = 0; j < nPoly0; ++j)
         {
             poly0s.emplace_back(
-                Polynomial<Int>::VandermondeInterpolation(resizedInput0 + compressFactor * j, compressFactor, evalToCoeff));
+                Polynomial<Int>::VandermondeInterpolation(resizedInput0 + compressFactor * j, compressFactor, IntermediateVanInv));
         }
         delete[] resizedInput0;
 
@@ -475,7 +555,7 @@ FLIOPMeasurement TwoPC<Int>::FLIOPWithPrecompute(const size_t seed, const size_t
         for (size_t j = 0; j < nPoly1; ++j)
         {
             poly1s.emplace_back(Polynomial<Int>::VandermondeInterpolation(resizedInput1 + compressFactor * j,
-                                                                          compressFactor, evalToCoeff));
+                                                                          compressFactor, IntermediateVanInv));
         }
         delete[] resizedInput1;
 
@@ -496,20 +576,14 @@ FLIOPMeasurement TwoPC<Int>::FLIOPWithPrecompute(const size_t seed, const size_t
     std::vector<Int> finalProverRandoms = finalProof.GetRandoms(2);
     verOp0.insert(verOp0.begin(), finalProverRandoms[0]);
     verOp1.insert(verOp1.begin(), finalProverRandoms[1]);
-    end = std::chrono::high_resolution_clock::now();
-    double verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-
-    SquareMatrix<Int> finalVan = SquareMatrix<Int>::GetVandermondeInverse(verOp0.size());
-
-    start = std::chrono::high_resolution_clock::now();
-    Polynomial<Int> finalOp0 = Polynomial<Int>::VandermondeInterpolation(verOp0.data(), verOp0.size(), finalVan);
-    Polynomial<Int> finalOp1 = Polynomial<Int>::VandermondeInterpolation(verOp1.data(), verOp1.size(), finalVan);
+    Polynomial<Int> finalOp0 = Polynomial<Int>::VandermondeInterpolation(verOp0.data(), verOp0.size(), finalVanInv);
+    Polynomial<Int> finalOp1 = Polynomial<Int>::VandermondeInterpolation(verOp1.data(), verOp1.size(), finalVanInv);
     Int gR = finalOp0.Evaluate(finalVerifierRandom) * finalOp1.Evaluate(finalVerifierRandom);
     isValid = isValid && (finalProof.GetQueryAnswer(queries[queries.size() - 2]) == gR) &&
               (finalProof.GetQueryAnswer(queries[queries.size() - 1]) == out);
 
     end = std::chrono::high_resolution_clock::now();
-    verifierTime += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    double verifierTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
     totalQueryComplexity += 2;
 
@@ -523,14 +597,18 @@ FLIOPMeasurement TwoPC<Int>::FLIOPCoefficient(const size_t seed, const size_t in
     Int::SetSeed(seed);
 
     std::vector<Int> op0(inputLength);
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
     std::vector<Int> op1(inputLength);
-    std::memset(op0.data(), 1, inputLength * sizeof(Int));
-    std::memset(op1.data(), 1, inputLength * sizeof(Int));
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
 
-    std::vector<Int> verOp0(inputLength);
-    std::vector<Int> verOp1(inputLength);
-    std::memset(verOp0.data(), 1, inputLength * sizeof(Int));
-    std::memset(verOp1.data(), 1, inputLength * sizeof(Int));
+    std::vector<Int> verOp0 = op0;
+    std::vector<Int> verOp1 = op1;
 
     bool isValid = true;
     Int out = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), inputLength);
@@ -648,42 +726,76 @@ FLIOPMeasurement TwoPC<Int>::FLIOPCoefficient(const size_t seed, const size_t in
                             LANTime * 1e-6, WANTime * 1e-6, isValid);
 }
 
-template <typename Int> void TwoPC<Int>::ExperimentFLIOP()
+template <typename Int> void TwoPC<Int>::ExperimentFLIOP(size_t nCases, size_t nExperiments)
 {
     constexpr uint32_t seed = 23571113;
-    constexpr size_t nCases = 11;
-    constexpr size_t inputLength = 4096;
+    size_t inputLength = pow(2, nCases + 1);
 
-    size_t j = 0;
-    FLIOPMeasurement baseline[nCases];
-    FLIOPMeasurement precomputation[nCases];
-    FLIOPMeasurement coefficientVersion[nCases];
+    std::cout << "Simulating FLIOP (baseline, precomputed, coefficient) " << nExperiments
+              << " times for input vector length " << inputLength << " and compression factor from 2 to "
+              << (size_t)pow(2, nCases) << "." << std::endl;
 
-    // warm up
+    FLIOPMeasurement* baseline = new FLIOPMeasurement[nCases];
+    FLIOPMeasurement* precomputation = new FLIOPMeasurement[nCases];
+    FLIOPMeasurement* coefficientVersion = new FLIOPMeasurement[nCases];
+
+    std::cout << "Starting warm up..." << std::endl;
+
+    // Warm up
     TwoPC<Int>::FLIOP(seed, inputLength, 64);
     TwoPC<Int>::FLIOPWithPrecompute(seed, inputLength, 64);
     TwoPC<Int>::FLIOPCoefficient(seed, inputLength, 64);
 
-    for (size_t i = 2; i <= 2048; i *= 2)
+    std::cout << "Finished!" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Start the simulations!" << std::endl;
+
+    for (size_t i = 1; i <= nCases; ++i)
     {
-        baseline[j] = TwoPC<Int>::FLIOP(seed, inputLength, i);
-        precomputation[j] = TwoPC<Int>::FLIOPWithPrecompute(seed, inputLength, i);
-        coefficientVersion[j] = TwoPC<Int>::FLIOPCoefficient(seed, inputLength, i);
-        if (!baseline[j].isVaild || !precomputation[j].isVaild || !coefficientVersion[j].isVaild)
+        size_t compressionFactor = pow(2, i);
+
+        baseline[i - 1] = TwoPC<Int>::FLIOP(seed, inputLength, compressionFactor);
+        precomputation[i - 1] = TwoPC<Int>::FLIOPWithPrecompute(seed, inputLength, compressionFactor);
+        coefficientVersion[i - 1] = TwoPC<Int>::FLIOPCoefficient(seed, inputLength, compressionFactor);
+
+        for (size_t j = 0; j < nExperiments - 1; ++j)
         {
-            std::cerr << "baseline / lambda : " << i << " / Valid : " << baseline[j].isVaild << std::endl;
-            std::cerr << "precomputation / lambda : " << i << " / Valid : " << precomputation[j].isVaild << std::endl;
-            std::cerr << "coefficientVersion / lambda : " << i << " / Valid : " << coefficientVersion[j].isVaild << std::endl;
+            baseline[i - 1] += TwoPC<Int>::FLIOP(seed, inputLength, compressionFactor);
+            precomputation[i - 1] += TwoPC<Int>::FLIOPWithPrecompute(seed, inputLength, compressionFactor);
+            coefficientVersion[i - 1] += TwoPC<Int>::FLIOPCoefficient(seed, inputLength, compressionFactor);
+        }
+
+        baseline[i - 1] /= nExperiments;
+        precomputation[i - 1] /= nExperiments;
+        coefficientVersion[i - 1] /= nExperiments;
+
+        if (!baseline[i - 1].isVaild)
+        {
+            std::cout << "Invalid in FLIOP baseline (" << compressionFactor << ")" << std::endl;
             return;
         }
-        ++j;
+        if (!precomputation[i - 1].isVaild)
+        {
+            std::cout << "Invalid in FLIOP precomputed (" << compressionFactor << ")" << std::endl;
+            return;
+        }
+        if (!coefficientVersion[i - 1].isVaild)
+        {
+            std::cout << "Invalid in FLIOP coefficient (" << compressionFactor << ")" << std::endl;
+            return;
+        }
+
+        std::cout << "Finished compression factor (" << compressionFactor << ")" << std::endl;
     }
 
+    std::cout << std::endl;
+    std::cout << "[Simulation Results]" << std::endl;
+    std::cout << "* Common info" << std::endl;
     std::cout << "Vector Length : " << inputLength << std::endl;
     std::cout << "Compression Factor : ";
-    for (size_t i = 2; i <= 2048; i *= 2)
+    for (size_t i = 1; i <= nCases; ++i)
     {
-        std::cout << i << ", ";
+        std::cout << (size_t)pow(2, i) << ", ";
     }
     std::cout << std::endl;
 
@@ -702,57 +814,71 @@ template <typename Int> void TwoPC<Int>::ExperimentFLIOP()
     std::cout << std::endl;
     std::cout << std::endl;
     
-    std::cout << "Prover Time (baseline) : ";
+    std::cout << "* Prover Time" << std::endl;
+    std::cout << "Baseline : ";
     for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << baseline[i].proverTime << std::setprecision(9) << ", ";
-    }
-    std::cout << std::endl;
-    std::cout << "Prover Time (precomputation) : ";
-    for (size_t i = 0; i < nCases; ++i)
-    {
-        std::cout << std::fixed << precomputation[i].proverTime << std::setprecision(9) << ", ";
-    }
-    std::cout << std::endl;
-    std::cout << "Prover Time (coefficient) : ";
-    for (size_t i = 0; i < nCases; ++i)
-    {
-        std::cout << std::fixed << coefficientVersion[i].proverTime << std::setprecision(9) << ", ";
+        std::cout << std::fixed << baseline[i].proverTime << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
 
-    std::cout << "Verifier Time (baseline) : ";
+    std::cout << "Precomputation : ";
     for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << baseline[i].verifierTime << std::setprecision(9) << ", ";
+        std::cout << std::fixed << precomputation[i].proverTime << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
-    std::cout << "Verifier Time (precomputation) : ";
+    
+    std::cout << "Coefficient : ";
     for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << precomputation[i].verifierTime << std::setprecision(9) << ", ";
+        std::cout << std::fixed << coefficientVersion[i].proverTime << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
-    std::cout << "Verifier Time (coefficient) : ";
+    std::cout << std::endl;
+
+    std::cout << "* Verifier Time" << std::endl;
+    std::cout << "Baseline : ";
     for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << coefficientVersion[i].verifierTime << std::setprecision(9) << ", ";
+        std::cout << std::fixed << baseline[i].verifierTime << std::setprecision(4) << ", ";
+    }
+    std::cout << std::endl;
+    
+    std::cout << "Precomputation : ";
+    for (size_t i = 0; i < nCases; ++i)
+    {
+        std::cout << std::fixed << precomputation[i].verifierTime << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
 
+    std::cout << "Coefficient : ";
+    for (size_t i = 0; i < nCases; ++i)
+    {
+        std::cout << std::fixed << coefficientVersion[i].verifierTime << std::setprecision(4) << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "* Communication Time" << std::endl;
     std::cout << "LAN Time : ";
     for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << baseline[i].LANTime << std::setprecision(9) << ", ";
+        std::cout << std::fixed << baseline[i].LANTime << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
 
-    std::cout << "WANTime : ";
+    std::cout << "WAN Time : ";
     for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << baseline[i].WANTime << std::setprecision(9) << ", ";
+        std::cout << std::fixed << baseline[i].WANTime << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
+    std::cout << "------------------------------------------------------" << std::endl;
+
+    delete[] baseline;
+    delete[] precomputation;
+    delete[] coefficientVersion;
 }
 
 #endif

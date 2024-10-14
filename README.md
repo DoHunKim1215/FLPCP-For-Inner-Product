@@ -37,11 +37,20 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
     <tr>
       <th> Prover Time </th>
       <th> Verifier Time </th>
-      <th> Proof size </th>
     </tr>
     <tr>
       <td> <img src="./figure/FLPCP/prover_time.png" /> </td>
       <td> <img src="./figure/FLPCP/verifier_time.png" /> </td>
+    </tr>
+  </table>
+</div>
+
+<div align="center" style="width: 33%">
+  <table>
+    <tr>
+      <th> Proof size </th>
+    </tr>
+    <tr>
       <td> <img src="./figure/FLPCP/proof_size.png" /> </td>
     </tr>
   </table>
@@ -54,12 +63,25 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
     <tr>
       <th> Prover Time </th>
       <th> Verifier Time </th>
-      <th> Proof Size </th>
     </tr>
     <tr>
       <td> <img src="./figure/FLIOP/prover_time.png" /> </td>
       <td> <img src="./figure/FLIOP/verifier_time.png" /> </td>
+    </tr>
+  </table>
+</div>
+
+<div align="center">
+  <table>
+    <tr>
+      <th> Proof Size </th>
+      <th> LAN Time </th>
+      <th> WAN Time </th>
+    </tr>
+    <tr>
       <td> <img src="./figure/FLIOP/proof_size.png" /> </td>
+      <td> <img src="./figure/FLIOP/lan_time.png" /> </td>
+      <td> <img src="./figure/FLIOP/wan_time.png" /> </td>
     </tr>
   </table>
 </div>
@@ -70,61 +92,76 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
   <table>
     <tr>
       <th> Total Improvement of 3PC in LAN </th>
+      <th> Total Payload Size of 3PC in LAN </th>
       <th> Improvement Proportion in LAN </th>
     </tr>
     <tr>
       <td> <img src="./figure/mpc_baseline/3pc_lan_total.png" /> </td>
+      <td> <img src="./figure/mpc_baseline/3pc_lan_payload.png" /> </td>
       <td> <img src="./figure/mpc_baseline/lan_portion.png" /> </td>
     </tr>
     <tr>
       <th> Total Improvement of 3PC in WAN </th>
+      <th> Total Payload Size of 3PC in WAN </th>
       <th> Improvement Proportion in WAN </th>
     </tr>
     <tr>
       <td> <img src="./figure/mpc_baseline/3pc_wan_total.png" /> </td>
+      <td> <img src="./figure/mpc_baseline/3pc_wan_payload.png" /> </td>
       <td> <img src="./figure/mpc_baseline/wan_portion.png" /> </td>
     </tr>
   </table>
 </div>
 
-* Optimal schedules of FLIOP 3PC
+* Optimal schedules of FLIOP 3PC (some part of log)
 
 ```
-LAN Min schedule
-Length: 2 / Min time : 0.071145 / Best schedule : 2
-Length: 4 / Min time : 0.072955648 / Best schedule : 4
-Length: 8 / Min time : 0.074775125 / Best schedule : 3 3
-Length: 16 / Min time : 0.077591819 / Best schedule : 6 3
-Length: 32 / Min time : 0.084919643 / Best schedule : 11 3
-Length: 64 / Min time : 0.093922426 / Best schedule : 5 5 3
-Length: 128 / Min time : 0.111944685 / Best schedule : 8 6 3
-Length: 256 / Min time : 0.146353032 / Best schedule : 6 5 3 3
-Length: 512 / Min time : 0.213569726 / Best schedule : 6 6 5 3
-Length: 1024 / Min time : 0.342897550 / Best schedule : 6 6 10 3
-Length: 2048 / Min time : 0.610700333 / Best schedule : 5 6 5 5 3
-Length: 4096 / Min time : 1.109722592 / Best schedule : 6 6 6 7 3
-Length: 8192 / Min time : 2.133530939 / Best schedule : 5 6 5 5 4 3
-Length: 16384 / Min time : 4.223953198 / Best schedule : 6 6 6 6 5 3
-Length: 32768 / Min time : 8.283761546 / Best schedule : 5 5 6 5 5 3 3
-Length: 65536 / Min time : 17.010978240 / Best schedule : 5 5 6 6 5 5 3
+[Optimal Schedules]
+* LAN Min schedule
+Length: 2 / Min time : 0.067145 / Best schedule : 2
+Length: 4 / Min time : 0.0703 / Best schedule : 2 2
+Length: 8 / Min time : 0.0725 / Best schedule : 4 2
+Length: 16 / Min time : 0.0761 / Best schedule : 9 2
+Length: 32 / Min time : 0.0814 / Best schedule : 8 2 2
+Length: 64 / Min time : 0.0908 / Best schedule : 5 7 2
+Length: 128 / Min time : 0.1098 / Best schedule : 6 11 2
+Length: 256 / Min time : 0.1434 / Best schedule : 6 5 5 2
+Length: 512 / Min time : 0.2091 / Best schedule : 6 6 8 2
+Length: 1024 / Min time : 0.3409 / Best schedule : 5 6 5 4 2
+Length: 2048 / Min time : 0.5946 / Best schedule : 5 5 6 7 2
+Length: 4096 / Min time : 1.1032 / Best schedule : 6 6 5 8 3
+Length: 8192 / Min time : 2.1291 / Best schedule : 6 5 5 4 7 2
+Length: 16384 / Min time : 4.1517 / Best schedule : 5 5 6 5 11 2
+Length: 32768 / Min time : 8.4775 / Best schedule : 7 6 6 7 10 2
+Length: 65536 / Min time : 16.9121 / Best schedule : 7 6 5 7 5 5 2
+Total: 0.0671, 0.0703, 0.0725, 0.0761, 0.0814, 0.0908, 0.1098, 0.1434, 0.2091, 0.3409, 0.5946, 1.1032, 2.1291, 4.1517, 8.4775, 16.9121,
+Prover: 0.0027, 0.0046, 0.0058, 0.0076, 0.0111, 0.0173, 0.0280, 0.0487, 0.0887, 0.1706, 0.3268, 0.6324, 1.2558, 2.4973, 5.0881, 10.2084,
+Verifier: 0.0044, 0.0056, 0.0066, 0.0084, 0.0102, 0.0134, 0.0216, 0.0345, 0.0602, 0.1101, 0.2076, 0.4106, 0.8131, 1.5941, 3.3291, 6.6434,
+Communication: 0.0600, 0.0601, 0.0601, 0.0601, 0.0601, 0.0601, 0.0602, 0.0602, 0.0602, 0.0602, 0.0602, 0.0602, 0.0602, 0.0603, 0.0603, 0.0603,
+Payload: 128, 184, 216, 296, 336, 368, 448, 456, 520, 544, 592, 640, 680, 760, 824, 832,
 
-WAN Min schedule
-Length: 2 / Min time : 80.023900000 / Best schedule : 2
-Length: 4 / Min time : 80.028900000 / Best schedule : 4
-Length: 8 / Min time : 80.036300000 / Best schedule : 3 3
-Length: 16 / Min time : 80.043900000 / Best schedule : 6 3
-Length: 32 / Min time : 80.055800000 / Best schedule : 4 3 3
-Length: 64 / Min time : 80.069000000 / Best schedule : 5 5 3
-Length: 128 / Min time : 80.093400000 / Best schedule : 8 6 3
-Length: 256 / Min time : 80.130200000 / Best schedule : 6 5 3 3
-Length: 512 / Min time : 80.202200000 / Best schedule : 6 6 5 3
-Length: 1024 / Min time : 80.337800000 / Best schedule : 6 5 4 3 3
-Length: 2048 / Min time : 80.608100000 / Best schedule : 5 6 5 5 3
-Length: 4096 / Min time : 81.113500000 / Best schedule : 6 6 6 7 3
-Length: 8192 / Min time : 82.139700000 / Best schedule : 5 6 5 5 4 3
-Length: 16384 / Min time : 84.236500000 / Best schedule : 6 6 6 6 5 3
-Length: 32768 / Min time : 88.298700000 / Best schedule : 5 5 6 5 5 3 3
-Length: 65536 / Min time : 97.030700000 / Best schedule : 5 5 6 6 5 5 3
+* WAN Min schedule
+Length: 2 / Min time : 80.0199 / Best schedule : 2
+Length: 4 / Min time : 80.0285 / Best schedule : 4
+Length: 8 / Min time : 80.0340 / Best schedule : 4 2
+Length: 16 / Min time : 80.0430 / Best schedule : 6 3
+Length: 32 / Min time : 80.0518 / Best schedule : 4 4 2
+Length: 64 / Min time : 80.0671 / Best schedule : 5 5 3
+Length: 128 / Min time : 80.0895 / Best schedule : 4 4 4 2
+Length: 256 / Min time : 80.1281 / Best schedule : 6 5 3 3
+Length: 512 / Min time : 80.1985 / Best schedule : 6 6 5 3
+Length: 1024 / Min time : 80.3351 / Best schedule : 5 6 5 4 2
+Length: 2048 / Min time : 80.5933 / Best schedule : 5 5 6 5 3
+Length: 4096 / Min time : 81.1069 / Best schedule : 6 6 5 4 3 2
+Length: 8192 / Min time : 82.1366 / Best schedule : 6 5 5 4 5 3
+Length: 16384 / Min time : 84.1646 / Best schedule : 5 5 6 5 4 3 2
+Length: 32768 / Min time : 88.4968 / Best schedule : 7 6 6 7 7 3
+Length: 65536 / Min time : 96.9343 / Best schedule : 7 6 5 7 5 3 3
+Total: 80.0199, 80.0285, 80.0340, 80.0430, 80.0518, 80.0671, 80.0895, 80.1281, 80.1985, 80.3351, 80.5933, 81.1069, 82.1366, 84.1646, 88.4968, 96.9343,
+Prover: 0.0027, 0.0031, 0.0058, 0.0071, 0.0114, 0.0167, 0.0294, 0.0483, 0.0881, 0.1706, 0.3263, 0.6344, 1.2553, 2.4985, 5.0875, 10.2080,
+Verifier: 0.0044, 0.0094, 0.0066, 0.0095, 0.0100, 0.0152, 0.0209, 0.0358, 0.0616, 0.1101, 0.2094, 0.4093, 0.8149, 1.5941, 3.3301, 6.6447,
+Communication: 80.0128, 80.0160, 80.0216, 80.0264, 80.0304, 80.0352, 80.0392, 80.0440, 80.0488, 80.0544, 80.0576, 80.0632, 80.0664, 80.0720, 80.0792, 80.0816,
+Payload: 128, 160, 216, 264, 304, 352, 392, 440, 488, 544, 576, 632, 664, 720, 792, 816,
 ```
 
 ### Finding optimal schedules of coefficient version in FLIOP
@@ -133,61 +170,76 @@ Length: 65536 / Min time : 97.030700000 / Best schedule : 5 5 6 6 5 5 3
   <table>
     <tr>
       <th> Total Improvement of 3PC in LAN </th>
+      <th> Total Payload Size of 3PC in LAN </th>
       <th> Improvement Proportion in LAN </th>
     </tr>
     <tr>
       <td> <img src="./figure/mpc_coefficient/3pc_lan_total.png" /> </td>
+      <td> <img src="./figure/mpc_coefficient/3pc_lan_payload.png" /> </td>
       <td> <img src="./figure/mpc_coefficient/lan_portion.png" /> </td>
     </tr>
     <tr>
       <th> Total Improvement of 3PC in WAN </th>
+      <th> Total Payload Size of 3PC in WAN </th>
       <th> Improvement Proportion in WAN </th>
     </tr>
     <tr>
       <td> <img src="./figure/mpc_coefficient/3pc_wan_total.png" /> </td>
+      <td> <img src="./figure/mpc_coefficient/3pc_wan_payload.png" /> </td>
       <td> <img src="./figure/mpc_coefficient/wan_portion.png" /> </td>
     </tr>
   </table>
 </div>
 
-* Optimal schedules of FLIOP Coefficient 3PC
+* Optimal schedules of FLIOP Coefficient 3PC (some part of log)
 
 ```
-LAN Min schedule
-Length: 2 / Min time : 0.065745 / Best schedule : 2
-Length: 4 / Min time : 0.065655648 / Best schedule : 4
-Length: 8 / Min time : 0.066277907 / Best schedule : 8
-Length: 16 / Min time : 0.069422426 / Best schedule : 16
-Length: 32 / Min time : 0.073508514 / Best schedule : 8 4
-Length: 64 / Min time : 0.077530773 / Best schedule : 8 8
-Length: 128 / Min time : 0.085669726 / Best schedule : 11 12
-Length: 256 / Min time : 0.103719810 / Best schedule : 16 16
-Length: 512 / Min time : 0.133894768 / Best schedule : 11 10 5
-Length: 1024 / Min time : 0.194522592 / Best schedule : 11 11 9
-Length: 2048 / Min time : 0.314167110 / Best schedule : 11 11 17
-Length: 4096 / Min time : 0.547653198 / Best schedule : 11 11 9 4
-Length: 8192 / Min time : 1.015775458 / Best schedule : 10 11 10 8
-Length: 16384 / Min time : 1.949514411 / Best schedule : 9 11 14 12
-Length: 32768 / Min time : 3.843481189 / Best schedule : 11 11 11 25
-Length: 65536 / Min time : 7.879845018 / Best schedule : 13 13 10 10 4
+[Optimal Schedules]
+* LAN Min schedule
+Length: 2 / Min time : 0.068245 / Best schedule : 2
+Length: 4 / Min time : 0.0654 / Best schedule : 4
+Length: 8 / Min time : 0.0662 / Best schedule : 8
+Length: 16 / Min time : 0.0691 / Best schedule : 16
+Length: 32 / Min time : 0.0731 / Best schedule : 11 3
+Length: 64 / Min time : 0.0768 / Best schedule : 10 7
+Length: 128 / Min time : 0.0842 / Best schedule : 11 12
+Length: 256 / Min time : 0.1020 / Best schedule : 13 20
+Length: 512 / Min time : 0.1314 / Best schedule : 11 10 5
+Length: 1024 / Min time : 0.1923 / Best schedule : 11 11 9
+Length: 2048 / Min time : 0.3132 / Best schedule : 10 10 21
+Length: 4096 / Min time : 0.5426 / Best schedule : 11 11 5 7
+Length: 8192 / Min time : 1.0127 / Best schedule : 11 9 10 9
+Length: 16384 / Min time : 1.9534 / Best schedule : 11 11 10 14
+Length: 32768 / Min time : 3.8155 / Best schedule : 11 11 11 25
+Length: 65536 / Min time : 7.8995 / Best schedule : 13 11 9 8 7
+Total: 0.0682, 0.0654, 0.0662, 0.0691, 0.0731, 0.0768, 0.0842, 0.1020, 0.1314, 0.1923, 0.3132, 0.5426, 1.0127, 1.9534, 3.8155, 7.8995,
+Prover: 0.0057, 0.0027, 0.0029, 0.0045, 0.0081, 0.0107, 0.0164, 0.0302, 0.0528, 0.1009, 0.1936, 0.3766, 0.7466, 1.4902, 2.9484, 6.2265,
+Verifier: 0.0025, 0.0026, 0.0032, 0.0045, 0.0049, 0.0060, 0.0076, 0.0116, 0.0184, 0.0312, 0.0593, 0.1058, 0.2058, 0.4029, 0.8067, 1.6127,
+Communication: 0.0600, 0.0601, 0.0601, 0.0601, 0.0601, 0.0601, 0.0602, 0.0602, 0.0602, 0.0602, 0.0603, 0.0602, 0.0603, 0.0603, 0.0604, 0.0603,
+Payload: 128, 160, 224, 352, 344, 392, 488, 648, 560, 640, 800, 712, 792, 904, 1096, 960,
 
-WAN Min schedule
-Length: 2 / Min time : 80.018500000 / Best schedule : 2
-Length: 4 / Min time : 80.021600000 / Best schedule : 4
-Length: 8 / Min time : 80.028600000 / Best schedule : 8
-Length: 16 / Min time : 80.036800000 / Best schedule : 4 4
-Length: 32 / Min time : 80.044600000 / Best schedule : 8 4
-Length: 64 / Min time : 80.055000000 / Best schedule : 8 8
-Length: 128 / Min time : 80.070000000 / Best schedule : 7 5 4
-Length: 256 / Min time : 80.090700000 / Best schedule : 8 8 4
-Length: 512 / Min time : 80.128200000 / Best schedule : 11 6 8
-Length: 1024 / Min time : 80.194300000 / Best schedule : 9 6 5 4
-Length: 2048 / Min time : 80.320700000 / Best schedule : 9 10 6 4
-Length: 4096 / Min time : 80.557600000 / Best schedule : 11 9 6 7
-Length: 8192 / Min time : 81.033100000 / Best schedule : 10 10 7 3 4
-Length: 16384 / Min time : 81.970900000 / Best schedule : 9 11 7 5 5
-Length: 32768 / Min time : 83.871000000 / Best schedule : 11 11 8 7 5
-Length: 65536 / Min time : 87.916100000 / Best schedule : 13 11 11 6 7
+* WAN Min schedule
+Length: 2 / Min time : 80.0210 / Best schedule : 2
+Length: 4 / Min time : 80.0213 / Best schedule : 4
+Length: 8 / Min time : 80.0285 / Best schedule : 8
+Length: 16 / Min time : 80.0357 / Best schedule : 4 4
+Length: 32 / Min time : 80.0444 / Best schedule : 5 7
+Length: 64 / Min time : 80.0551 / Best schedule : 8 8
+Length: 128 / Min time : 80.0682 / Best schedule : 8 4 4
+Length: 256 / Min time : 80.0898 / Best schedule : 8 5 7
+Length: 512 / Min time : 80.1261 / Best schedule : 11 7 7
+Length: 1024 / Min time : 80.1922 / Best schedule : 10 7 3 5
+Length: 2048 / Min time : 80.3171 / Best schedule : 10 7 6 5
+Length: 4096 / Min time : 80.5528 / Best schedule : 11 9 6 7
+Length: 8192 / Min time : 81.0290 / Best schedule : 11 9 7 3 4
+Length: 16384 / Min time : 81.9753 / Best schedule : 11 10 6 5 5
+Length: 32768 / Min time : 83.8430 / Best schedule : 11 11 8 5 7
+Length: 65536 / Min time : 87.9352 / Best schedule : 13 11 9 8 7
+Total: 80.0210, 80.0213, 80.0285, 80.0357, 80.0444, 80.0551, 80.0682, 80.0898, 80.1261, 80.1922, 80.3171, 80.5528, 81.0290, 81.9753, 83.8430, 87.9352,
+Prover: 0.0057, 0.0027, 0.0029, 0.0063, 0.0079, 0.0114, 0.0189, 0.0306, 0.0532, 0.1022, 0.1952, 0.3766, 0.7487, 1.4913, 2.9492, 6.2265,
+Verifier: 0.0025, 0.0026, 0.0032, 0.0046, 0.0053, 0.0061, 0.0093, 0.0128, 0.0185, 0.0332, 0.0603, 0.1066, 0.2067, 0.4056, 0.8074, 1.6127,
+Communication: 80.0128, 80.0160, 80.0224, 80.0248, 80.0312, 80.0376, 80.0400, 80.0464, 80.0544, 80.0568, 80.0616, 80.0696, 80.0736, 80.0784, 80.0864, 80.0960,
+Payload: 128, 160, 224, 248, 312, 376, 400, 464, 544, 568, 616, 696, 736, 784, 864, 960,
 ```
 
 ### Comparing optimum of baseline and coefficient version in FLIOP 3PC
@@ -196,18 +248,22 @@ Length: 65536 / Min time : 87.916100000 / Best schedule : 13 11 11 6 7
   <table>
     <tr>
       <th> Total Improvement of 3PC in LAN </th>
+      <th> Total Payload Size of 3PC in LAN </th>
       <th> Improvement Proportion in LAN </th>
     </tr>
     <tr>
       <td> <img src="./figure/comparison_optimum/3pc_lan_total.png" /> </td>
+      <td> <img src="./figure/comparison_optimum/3pc_lan_payload.png" /> </td>
       <td> <img src="./figure/comparison_optimum/lan_portion.png" /> </td>
     </tr>
     <tr>
       <th> Total Improvement of 3PC in WAN </th>
+      <th> Total Payload Size of 3PC in WAN </th>
       <th> Improvement Proportion in WAN </th>
     </tr>
     <tr>
       <td> <img src="./figure/comparison_optimum/3pc_wan_total.png" /> </td>
+      <td> <img src="./figure/comparison_optimum/3pc_wan_payload.png" /> </td>
       <td> <img src="./figure/comparison_optimum/wan_portion.png" /> </td>
     </tr>
   </table>

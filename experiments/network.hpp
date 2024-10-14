@@ -39,13 +39,28 @@ public:
     static constexpr double WANBaseDelayMs = 0.4 * 1e+8 * 1e-6;
 };
 
-struct FLPCPMeasurement
+class FLPCPMeasurement
 {
+public:
     size_t proofLength;
     size_t nQueries;
     double proverTime;
     double verifierTime;
     bool isVaild;
+
+    FLPCPMeasurement& operator+=(const FLPCPMeasurement& obj)
+    {
+        this->proverTime += obj.proverTime;
+        this->verifierTime += obj.verifierTime;
+        return *this;
+    }
+
+    FLPCPMeasurement& operator/=(const size_t& divisor)
+    {
+        this->proverTime /= (double)divisor;
+        this->verifierTime /= (double)divisor;
+        return *this;
+    }
 };
 
 struct FLIOPMeasurement
@@ -57,6 +72,24 @@ struct FLIOPMeasurement
     double LANTime;
     double WANTime;
     bool isVaild;
+
+    FLIOPMeasurement& operator+=(const FLIOPMeasurement& obj)
+    {
+        this->proverTime += obj.proverTime;
+        this->verifierTime += obj.verifierTime;
+        this->LANTime += obj.LANTime;
+        this->WANTime += obj.WANTime;
+        return *this;
+    }
+
+    FLIOPMeasurement& operator/=(const size_t& divisor)
+    {
+        this->proverTime /= (double)divisor;
+        this->verifierTime /= (double)divisor;
+        this->LANTime /= (double)divisor;
+        this->WANTime /= (double)divisor;
+        return *this;
+    }
 };
 
 struct OneRoundMeasurement
@@ -65,6 +98,26 @@ struct OneRoundMeasurement
     double verifierTimeNs;
     double communicationTimeNsInLAN;
     double communicationTimeNsInWAN;
+    size_t totalPayloadSize;
+
+    OneRoundMeasurement& operator+=(const OneRoundMeasurement& obj)
+    {
+        this->proverTimeNs += obj.proverTimeNs;
+        this->verifierTimeNs += obj.verifierTimeNs;
+        this->communicationTimeNsInLAN += obj.communicationTimeNsInLAN;
+        this->communicationTimeNsInWAN += obj.communicationTimeNsInWAN;
+        this->totalPayloadSize = obj.totalPayloadSize;
+        return *this;
+    }
+
+    OneRoundMeasurement& operator/=(const size_t& divisor)
+    {
+        this->proverTimeNs /= (double)divisor;
+        this->verifierTimeNs /= (double)divisor;
+        this->communicationTimeNsInLAN /= (double)divisor;
+        this->communicationTimeNsInWAN /= (double)divisor;
+        return *this;
+    }
 };
 
 struct IOPSchedule

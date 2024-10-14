@@ -18,7 +18,7 @@ public:
     MPC(const uint32_t seed, const size_t inputLength, const size_t maxLambda, const size_t nParties);
     ~MPC();
 
-    void FindBestFLIOPSchedule(bool coefficient = false);
+    void FindBestFLIOPSchedule(bool coefficient = false, size_t nExperiments = 10);
 
 private:
     size_t mInputLength;
@@ -28,6 +28,7 @@ private:
 
     // (mMaxLambda + 1) x (mInputLength + 1)
     OneRoundMeasurement** mOneRoundMeasures;
+    OneRoundMeasurement** mFinalOneRoundMeasures;
     double** mTotalLANTimes;
     double** mTotalWANTimes;
 
@@ -56,12 +57,15 @@ MPC<Int>::MPC(const uint32_t seed, const size_t inputLength, const size_t maxLam
     mNParties = nParties;
 
     mOneRoundMeasures = new OneRoundMeasurement*[mMaxLambda + 1];
+    mFinalOneRoundMeasures = new OneRoundMeasurement*[mMaxLambda + 1];
     mTotalLANTimes = new double*[mMaxLambda + 1];
     mTotalWANTimes = new double*[mMaxLambda + 1];
     for (size_t i = 0; i < mMaxLambda + 1; ++i)
     {
         mOneRoundMeasures[i] = new OneRoundMeasurement[mInputLength + 1];
         std::memset(mOneRoundMeasures[i], 0, (mInputLength + 1) * sizeof(OneRoundMeasurement));
+        mFinalOneRoundMeasures[i] = new OneRoundMeasurement[mInputLength + 1];
+        std::memset(mFinalOneRoundMeasures[i], 0, (mInputLength + 1) * sizeof(OneRoundMeasurement));
         mTotalLANTimes[i] = new double[mInputLength + 1];
         std::memset(mTotalLANTimes[i], 0, (mInputLength + 1) * sizeof(double));
         mTotalWANTimes[i] = new double[mInputLength + 1];
@@ -74,10 +78,12 @@ template <typename Int> MPC<Int>::~MPC()
     for (size_t i = 0; i < mMaxLambda + 1; ++i)
     {
         delete[] mOneRoundMeasures[i];
+        delete[] mFinalOneRoundMeasures[i];
         delete[] mTotalLANTimes[i];
         delete[] mTotalWANTimes[i];
     }
     delete[] mOneRoundMeasures;
+    delete[] mFinalOneRoundMeasures;
     delete[] mTotalLANTimes;
     delete[] mTotalWANTimes;
 }
@@ -88,9 +94,15 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
     Int::SetSeed(mSeed);
 
     std::vector<Int> op0(inputLength);
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
     std::vector<Int> op1(inputLength);
-    std::memset(op0.data(), 1, inputLength * sizeof(Int));
-    std::memset(op1.data(), 1, inputLength * sizeof(Int));
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
 
     std::vector<Int> op0Share(inputLength);
     std::vector<Int> op1Share(inputLength);
@@ -101,6 +113,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
     double verifierTime = 0.;
     double LANTime = 0.;
     double WANTime = 0.;
+    size_t totalPayloadSize = 0;
 
     // In practice, the verifiers may have different keys.
     // But this simulation assume all secret keys are 0's for simplicity.
@@ -114,18 +127,19 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
     outShares[0] = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), op0.size());
     for (size_t i = 1; i < nVerifiers; ++i)
     {
-        outShares[i] = Int((uint64_t)0);
+        outShares[i] = Int::GenerateRandom();
+        outShares[0] = outShares[0] - outShares[i];
     }
 
     if (ceil(op0.size() / (double)compressFactor) > 1)
     {
         // Precompute a Vandermonde matrix
-        SquareMatrix<Int> evalToCoeff = SquareMatrix<Int>::GetVandermondeInverse(compressFactor);
+        SquareMatrix<Int> vanInv = SquareMatrix<Int>::GetVandermondeInverse(compressFactor);
 
         // Prover
         auto start = std::chrono::high_resolution_clock::now();
         InteractiveProof<Int> proof = InnerProductCircuit<Int>::MakeRoundProofWithPrecompute(
-            op0.data(), op1.data(), op0.size(), compressFactor, evalToCoeff);
+            op0.data(), op1.data(), op0.size(), compressFactor, vanInv);
         std::vector<Proof<Int>> proofShares = proof.GetShares(nVerifiers);
 
         // Verifier-specific random value generation
@@ -149,6 +163,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
         // Assumption : the transmissions to multiple verifiers simultaneously occur.
         LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + 2 * sizeof(Int));
         WANTime += Network::GetWANPayloadDelay(proof.GetBytes() + 2 * sizeof(Int));
+        totalPayloadSize += proof.GetBytes() + 2 * sizeof(Int);
 
         Int* verificationShares = new Int[nVerifiers];
 
@@ -173,6 +188,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
         // Communication - Verifiers send their own 'verificationShares' value, its own random.
         LANTime += Network::GetLANPayloadDelay(2 * sizeof(Int));
         WANTime += Network::GetWANPayloadDelay(2 * sizeof(Int));
+        totalPayloadSize += 2 * sizeof(Int);
 
 
         // Collector (one of the verifiers)
@@ -202,7 +218,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
         for (size_t i = 0; i < nPoly0; ++i)
         {
             poly0s.emplace_back(Polynomial<Int>::VandermondeInterpolation(resizedInput0 + compressFactor * i,
-                                                                          compressFactor, evalToCoeff));
+                                                                          compressFactor, vanInv));
         }
         op0 = proof.EvaluatePolyPs(commonRandom);
         delete[] resizedInput0;
@@ -216,7 +232,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
         for (size_t i = 0; i < nPoly1; ++i)
         {
             poly1s.emplace_back(Polynomial<Int>::VandermondeInterpolation(resizedInput1 + compressFactor * i,
-                                                                          compressFactor, evalToCoeff));
+                                                                          compressFactor, vanInv));
         }
         op1 = proof.EvaluatePolyPs(commonRandom);
         delete[] resizedInput1;
@@ -264,6 +280,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
         // Communication
         LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + 4 * sizeof(Int));
         WANTime += Network::GetWANPayloadDelay(proof.GetBytes() + 4 * sizeof(Int));
+        totalPayloadSize += proof.GetBytes() + 4 * sizeof(Int);
 
         std::vector<Int> randomsInConstantTerms = proof.GetRandoms(2);
         Int* verificationShares = new Int[nVerifiers];
@@ -326,10 +343,13 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
             resultShares[i] = proofShares[i].GetQueryAnswer(queries[queries.size() - 1]) - outShares[i];
         }
 
+
         // Communication - Verifiers share two evaluationShares, one varificationShare,
         // one resultShare, private random.
         LANTime += Network::GetLANPayloadDelay(5 * sizeof(Int));
         WANTime += Network::GetWANPayloadDelay(5 * sizeof(Int));
+        totalPayloadSize += 5 * sizeof(Int);
+
 
         // Collector
         start = std::chrono::high_resolution_clock::now();
@@ -383,7 +403,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPOneRound(size_t inputLength, size_t c
         exit(-1);
     }
 
-    return OneRoundMeasurement(proverTime, verifierTime, LANTime, WANTime);
+    return OneRoundMeasurement(proverTime, verifierTime, LANTime, WANTime, totalPayloadSize);
 }
 
 template <typename Int>
@@ -392,9 +412,15 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
     Int::SetSeed(mSeed);
 
     std::vector<Int> op0(inputLength);
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op0[i] = Int::GenerateRandom();
+    }
     std::vector<Int> op1(inputLength);
-    std::memset(op0.data(), 1, inputLength * sizeof(Int));
-    std::memset(op1.data(), 1, inputLength * sizeof(Int));
+    for (size_t i = 0; i < inputLength; ++i)
+    {
+        op1[i] = Int::GenerateRandom();
+    }
 
     std::vector<Int> op0Share(inputLength);
     std::vector<Int> op1Share(inputLength);
@@ -405,7 +431,8 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
     double verifierTime = 0.;
     double LANTime = 0.;
     double WANTime = 0.;
-    
+    size_t totalPayloadSize = 0;
+
     unsigned char secretKey[64] = {0};
 
     const size_t nVerifiers = mNParties - 1;
@@ -415,7 +442,8 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
     outShares[0] = InnerProductCircuit<Int>::Forward(op0.data(), op1.data(), op0.size());
     for (size_t i = 1; i < nVerifiers; ++i)
     {
-        outShares[i] = Int((uint64_t)0);
+        outShares[i] = Int::GenerateRandom();
+        outShares[0] = outShares[0] - outShares[i];
     }
 
     if (ceil(op0.size() / (double)compressFactor) > 1)
@@ -444,6 +472,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
         // Communication
         LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + 2 * sizeof(Int));
         WANTime += Network::GetWANPayloadDelay(proof.GetBytes() + 2 * sizeof(Int));
+        totalPayloadSize += proof.GetBytes() + 2 * sizeof(Int);
 
         Int* verificationShares = new Int[nVerifiers];
 
@@ -469,6 +498,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
         // Communication - Verifiers send their own 'verificationShares' value, its own random.
         LANTime += Network::GetLANPayloadDelay(2 * sizeof(Int));
         WANTime += Network::GetWANPayloadDelay(2 * sizeof(Int));
+        totalPayloadSize += 2 * sizeof(Int);
 
 
         // Collector (one of the verifiers)
@@ -555,6 +585,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
         // Communication
         LANTime += Network::GetLANPayloadDelay(proof.GetBytes() + 4 * sizeof(Int));
         WANTime += Network::GetWANPayloadDelay(proof.GetBytes() + 4 * sizeof(Int));
+        totalPayloadSize += proof.GetBytes() + 4 * sizeof(Int);
 
         std::vector<Int> randomsInConstantTerms = proof.GetRandoms(2);
         Int* verificationShares = new Int[nVerifiers];
@@ -619,6 +650,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
         // one resultShare, private random.
         LANTime += Network::GetLANPayloadDelay(5 * sizeof(Int));
         WANTime += Network::GetWANPayloadDelay(5 * sizeof(Int));
+        totalPayloadSize += 5 * sizeof(Int);
 
         // Collector
         start = std::chrono::high_resolution_clock::now();
@@ -672,7 +704,7 @@ OneRoundMeasurement MPC<Int>::SimulateFLIOPCoefficientOneRound(size_t inputLengt
         exit(-1);
     }
 
-    return OneRoundMeasurement(proverTime, verifierTime, LANTime, WANTime);
+    return OneRoundMeasurement(proverTime, verifierTime, LANTime, WANTime, totalPayloadSize);
 }
 
 template <typename Int> void MPC<Int>::CalculateOneRoundTimesRecursive(const size_t inputLength)
@@ -689,7 +721,7 @@ template <typename Int> void MPC<Int>::CalculateOneRoundTimesRecursive(const siz
 
     if (inputLength >= mInputLength * 0.1)
     {
-        std::cout << "Calculated : " << inputLength << std::endl;
+        std::cout << "Calculated input length (" << inputLength << ")." << std::endl;
     }
 }
 
@@ -707,7 +739,7 @@ template <typename Int> void MPC<Int>::CalculateOneCoefficientRoundTimesRecursiv
 
     if (inputLength >= mInputLength * 0.1)
     {
-        std::cout << "Calculated : " << inputLength << std::endl;
+        std::cout << "Calculated input length (" << inputLength << ")." << std::endl;
     }
 }
 
@@ -849,242 +881,312 @@ template <typename Int> IOPSchedule MPC<Int>::FindWANDelayRecursive(const size_t
     return IOPSchedule(newTotal, newLambdas, newTrace);
 }
 
-template <typename Int> void MPC<Int>::FindBestFLIOPSchedule(bool coefficient)
+template <typename Int> void MPC<Int>::FindBestFLIOPSchedule(bool coefficient, size_t nExperiments)
 {
-    const size_t nStep = (size_t)std::log2(mInputLength / (double)2) + 1;
-
     std::cout.sync_with_stdio(false);
+    const size_t nCases = (size_t)std::log2(mInputLength / (double)2) + 1;
 
+    std::cout << "Simulating FLIOP " << mNParties << "-PC " << nExperiments << " times "
+              << "for finding a optimal compression schedule in input vector lengths from 2 to " << mInputLength
+              << "." << std::endl;
     if (coefficient)
     {
-        CalculateOneCoefficientRoundTimesRecursive(mInputLength);
+        std::cout << "This simulation use coefficient version of FLIOP." << std::endl;
     }
     else
     {
-        CalculateOneRoundTimesRecursive(mInputLength);
+        std::cout << "This simulation use original version of FLIOP." << std::endl;
     }
+
+    std::cout << std::endl;
+    std::cout << "Start to measure one round time." << std::endl;
+
+    for (size_t i = 0; i < nExperiments; ++i)
+    {
+        std::cout << "Experiment (" << i  << ")" << std::endl;
+        if (coefficient)
+        {
+            CalculateOneCoefficientRoundTimesRecursive(mInputLength);
+        }
+        else
+        {
+            CalculateOneRoundTimesRecursive(mInputLength);
+        }
+
+        for (size_t j = 0; j < mMaxLambda + 1; ++j)
+        {
+            for (size_t k = 0; k < mInputLength + 1; ++k)
+            {
+                mFinalOneRoundMeasures[j][k] += mOneRoundMeasures[j][k];
+            }
+        }
+    }
+
+    for (size_t j = 0; j < mMaxLambda + 1; ++j)
+    {
+        for (size_t k = 0; k < mInputLength + 1; ++k)
+        {
+            mFinalOneRoundMeasures[j][k] /= nExperiments;
+            mOneRoundMeasures[j][k] = mFinalOneRoundMeasures[j][k];
+        }
+    }
+
     std::cout << "One round times were successfully measured!" << std::endl;
+    std::cout << std::endl;
 
-    size_t j = 0;
-    double* outputs = new double[nStep];
-    double* proverTimeOutputs = new double[nStep];
-    double* verifierTimeOutputs = new double[nStep];
-    double* commTimeOutputs = new double[nStep];
+    double* outputs = new double[nCases];
+    double* proverTimeOutputs = new double[nCases];
+    double* verifierTimeOutputs = new double[nCases];
+    double* commTimeOutputs = new double[nCases];
+    size_t* payloadOutputs = new size_t[nCases];
 
-    std::cout << "LAN Min schedule" << std::endl;
-    for (size_t i = 2; i <= mInputLength; i *= 2)
+    std::cout << "[Optimal Schedules]" << std::endl;
+    std::cout << "* LAN Min schedule" << std::endl;
+    for (size_t i = 0; i < nCases; ++i)
     {
-        IOPSchedule best = FindBestLANSchedule(i);
-        outputs[j] = best.time * 1e-6 + 2 * Network::LANBaseDelayMs;
+        size_t length = (size_t)pow(2, i + 1);
+        IOPSchedule best = FindBestLANSchedule(length);
+        outputs[i] = best.time * 1e-6 + 2 * Network::LANBaseDelayMs;
 
-        std::cout << "Length: " << i << " / Min time : ";
-        std::cout << std::fixed << outputs[j] << std::setprecision(9);
+        std::cout << "Length: " << length << " / Min time : ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(4);
         std::cout << " / Best schedule : ";
-        for (size_t k = 0; k < best.lambdas.size(); ++k)
+        for (size_t j = 0; j < best.lambdas.size(); ++j)
         {
-            std::cout << best.lambdas[k] << " ";
+            std::cout << best.lambdas[j] << " ";
         }
         std::cout << std::endl;
 
-        proverTimeOutputs[j] = 0.;
-        verifierTimeOutputs[j] = 0.;
-        commTimeOutputs[j] = 0.;
-        for (size_t k = 0; k < best.trace.size(); ++k)
+        proverTimeOutputs[i] = 0.;
+        verifierTimeOutputs[i] = 0.;
+        commTimeOutputs[i] = 0.;
+        payloadOutputs[i] = 0;
+        for (size_t j = 0; j < best.trace.size(); ++j)
         {
-            proverTimeOutputs[j] += best.trace[k].proverTimeNs;
-            verifierTimeOutputs[j] += best.trace[k].verifierTimeNs;
-            commTimeOutputs[j] += best.trace[k].communicationTimeNsInLAN;
+            proverTimeOutputs[i] += best.trace[j].proverTimeNs;
+            verifierTimeOutputs[i] += best.trace[j].verifierTimeNs;
+            commTimeOutputs[i] += best.trace[j].communicationTimeNsInLAN;
+            payloadOutputs[i] += best.trace[j].totalPayloadSize;
         }
-        proverTimeOutputs[j] *= 1e-6;
-        verifierTimeOutputs[j] *= 1e-6;
-        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + 2 * Network::LANBaseDelayMs;
-
-        ++j;
+        proverTimeOutputs[i] *= 1e-6;
+        verifierTimeOutputs[i] *= 1e-6;
+        commTimeOutputs[i] = commTimeOutputs[i] * 1e-6 + 2 * Network::LANBaseDelayMs;
     }
     std::cout << "Total: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Prover: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Verifier: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Communication: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
-
-    j = 0;
-    std::cout << "WAN Min schedule" << std::endl;
-    for (size_t i = 2; i <= mInputLength; i *= 2)
+    std::cout << "Payload: ";
+    for (size_t i = 0; i < nCases; ++i)
     {
-        IOPSchedule best = FindBestWANSchedule(i);
-        std::cout << "Length: " << i;
-        std::cout << " / Min time : " << std::fixed << best.time * 1e-6 + 2 * Network::WANBaseDelayMs
-                  << std::setprecision(9);
+        std::cout << payloadOutputs[i] << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "* WAN Min schedule" << std::endl;
+    for (size_t i = 0; i < nCases; ++i)
+    {
+        size_t length = (size_t)pow(2, i + 1);
+        IOPSchedule best = FindBestWANSchedule(length);
+        outputs[i] = best.time * 1e-6 + 2 * Network::WANBaseDelayMs;
+
+        std::cout << "Length: " << length << " / Min time : ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(4);
         std::cout << " / Best schedule : ";
-        for (size_t k = 0; k < best.lambdas.size(); ++k)
+        for (size_t j = 0; j < best.lambdas.size(); ++j)
         {
-            std::cout << best.lambdas[k] << " ";
+            std::cout << best.lambdas[j] << " ";
         }
         std::cout << std::endl;
 
-        outputs[j] = best.time * 1e-6 + 2 * Network::WANBaseDelayMs;
-
-        proverTimeOutputs[j] = 0.;
-        verifierTimeOutputs[j] = 0.;
-        commTimeOutputs[j] = 0.;
-        for (size_t k = 0; k < best.trace.size(); ++k)
+        proverTimeOutputs[i] = 0.;
+        verifierTimeOutputs[i] = 0.;
+        commTimeOutputs[i] = 0.;
+        payloadOutputs[i] = 0;
+        for (size_t j = 0; j < best.trace.size(); ++j)
         {
-            proverTimeOutputs[j] += best.trace[k].proverTimeNs;
-            verifierTimeOutputs[j] += best.trace[k].verifierTimeNs;
-            commTimeOutputs[j] += best.trace[k].communicationTimeNsInWAN;
+            proverTimeOutputs[i] += best.trace[j].proverTimeNs;
+            verifierTimeOutputs[i] += best.trace[j].verifierTimeNs;
+            commTimeOutputs[i] += best.trace[j].communicationTimeNsInWAN;
+            payloadOutputs[i] += best.trace[j].totalPayloadSize;
         }
-        proverTimeOutputs[j] *= 1e-6;
-        verifierTimeOutputs[j] *= 1e-6;
-        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + 2 * Network::WANBaseDelayMs;
-
-        ++j;
+        proverTimeOutputs[i] *= 1e-6;
+        verifierTimeOutputs[i] *= 1e-6;
+        commTimeOutputs[i] = commTimeOutputs[i] * 1e-6 + 2 * Network::WANBaseDelayMs;
     }
     std::cout << "Total: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Prover: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Verifier: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Communication: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
-
-    j = 0;
-    std::cout << "FLIOP LAN Delay" << std::endl;
-    for (size_t i = 2; i <= mInputLength; i *= 2)
+    std::cout << "Payload: ";
+    for (size_t i = 0; i < nCases; ++i)
     {
-        IOPSchedule schedule = FindLANDelay(i);
-        std::cout << "Length: " << i << " / Time : " << std::fixed << schedule.time * 1e-6 + 2 * Network::LANBaseDelayMs
-                  << std::setprecision(9) << std::endl;
-        outputs[j] = schedule.time * 1e-6 + 2 * Network::LANBaseDelayMs;
+        std::cout << payloadOutputs[i] << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
 
-        proverTimeOutputs[j] = 0.;
-        verifierTimeOutputs[j] = 0.;
-        commTimeOutputs[j] = 0.;
+    std::cout << "[Constant Schedules]" << std::endl;
+    std::cout << "* FLIOP LAN Delay" << std::endl;
+    for (size_t i = 0; i < nCases; ++i)
+    {
+        size_t length = pow(2, i + 1);
+        IOPSchedule schedule = FindLANDelay(length);
+        outputs[i] = schedule.time * 1e-6 + 2 * Network::LANBaseDelayMs;
+
+        std::cout << "Length: " << length << " / Time : " << std::fixed << outputs[i]
+                  << std::setprecision(4) << std::endl;
+
+        proverTimeOutputs[i] = 0.;
+        verifierTimeOutputs[i] = 0.;
+        commTimeOutputs[i] = 0.;
+        payloadOutputs[i] = 0;
         for (size_t k = 0; k < schedule.trace.size(); ++k)
         {
-            proverTimeOutputs[j] += schedule.trace[k].proverTimeNs;
-            verifierTimeOutputs[j] += schedule.trace[k].verifierTimeNs;
-            commTimeOutputs[j] += schedule.trace[k].communicationTimeNsInLAN;
+            proverTimeOutputs[i] += schedule.trace[k].proverTimeNs;
+            verifierTimeOutputs[i] += schedule.trace[k].verifierTimeNs;
+            commTimeOutputs[i] += schedule.trace[k].communicationTimeNsInLAN;
+            payloadOutputs[i] += schedule.trace[k].totalPayloadSize;
         }
-        proverTimeOutputs[j] *= 1e-6;
-        verifierTimeOutputs[j] *= 1e-6;
-        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + 2 * Network::LANBaseDelayMs;
-
-        ++j;
+        proverTimeOutputs[i] *= 1e-6;
+        verifierTimeOutputs[i] *= 1e-6;
+        commTimeOutputs[i] = commTimeOutputs[i] * 1e-6 + 2 * Network::LANBaseDelayMs;
     }
     std::cout << "Total: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Prover: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Verifier: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Communication: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
-
-    j = 0;
-    std::cout << "FLIOP WAN Delay" << std::endl;
-    for (size_t i = 2; i <= mInputLength; i *= 2)
+    std::cout << "Payload: ";
+    for (size_t i = 0; i < nCases; ++i)
     {
-        IOPSchedule schedule = FindWANDelay(i);
-        std::cout << "Length: " << i << " / Time : " << std::fixed << schedule.time * 1e-6 + 2 * Network::WANBaseDelayMs
-                  << std::setprecision(9) << std::endl;
-        outputs[j] = schedule.time * 1e-6 + 2 * Network::WANBaseDelayMs;
+        std::cout << payloadOutputs[i] << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
 
-        proverTimeOutputs[j] = 0.;
-        verifierTimeOutputs[j] = 0.;
-        commTimeOutputs[j] = 0.;
-        for (size_t k = 0; k < schedule.trace.size(); ++k)
+    std::cout << "* FLIOP WAN Delay" << std::endl;
+    for (size_t i = 0; i < nCases; ++i)
+    {
+        size_t length = pow(2, i + 1);
+        IOPSchedule schedule = FindWANDelay(length);
+        outputs[i] = schedule.time * 1e-6 + 2 * Network::WANBaseDelayMs;
+
+        std::cout << "Length: " << length << " / Time : " << std::fixed << outputs[i]
+                  << std::setprecision(4) << std::endl;
+
+        proverTimeOutputs[i] = 0.;
+        verifierTimeOutputs[i] = 0.;
+        commTimeOutputs[i] = 0.;
+        payloadOutputs[i] = 0;
+        for (size_t j = 0; j < schedule.trace.size(); ++j)
         {
-            proverTimeOutputs[j] += schedule.trace[k].proverTimeNs;
-            verifierTimeOutputs[j] += schedule.trace[k].verifierTimeNs;
-            commTimeOutputs[j] += schedule.trace[k].communicationTimeNsInWAN;
+            proverTimeOutputs[i] += schedule.trace[j].proverTimeNs;
+            verifierTimeOutputs[i] += schedule.trace[j].verifierTimeNs;
+            commTimeOutputs[i] += schedule.trace[j].communicationTimeNsInWAN;
+            payloadOutputs[i] += schedule.trace[j].totalPayloadSize;
         }
-        proverTimeOutputs[j] *= 1e-6;
-        verifierTimeOutputs[j] *= 1e-6;
-        commTimeOutputs[j] = commTimeOutputs[j] * 1e-6 + 2 * Network::WANBaseDelayMs;
-
-        ++j;
+        proverTimeOutputs[i] *= 1e-6;
+        verifierTimeOutputs[i] *= 1e-6;
+        commTimeOutputs[i] = commTimeOutputs[i] * 1e-6 + 2 * Network::WANBaseDelayMs;
     }
     std::cout << "Total: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << outputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << outputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Prover: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << proverTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Verifier: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << verifierTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
     std::cout << "Communication: ";
-    for (size_t i = 0; i < nStep; ++i)
+    for (size_t i = 0; i < nCases; ++i)
     {
-        std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(9) << ", ";
+        std::cout << std::fixed << commTimeOutputs[i] << std::setprecision(4) << ", ";
     }
     std::cout << std::endl;
+    std::cout << "Payload: ";
+    for (size_t i = 0; i < nCases; ++i)
+    {
+        std::cout << payloadOutputs[i] << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << "-------------------------------------------------" << std::endl;
 
     delete[] outputs;
     delete[] proverTimeOutputs;
     delete[] verifierTimeOutputs;
     delete[] commTimeOutputs;
+    delete[] payloadOutputs;
 }
 
 #endif

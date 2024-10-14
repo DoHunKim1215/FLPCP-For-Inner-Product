@@ -12,6 +12,7 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 * `figure` - experiment result graphs and its poltting Python code.
 * `math` - logic of primitive modular operations and polynomial interpolation.
 * `unit` - class representing proof and query.
+* `log` - logs of the experiments.
 
 ## Experiments
 
@@ -31,6 +32,8 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 * Random seed : the fixed seed (23571113) was applied in all experiments.
 
 ### FLPCP Complexity
+
+* mean of 3 trials
 
 <div align="center">
   <table>
@@ -57,6 +60,8 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 </div>
 
 ### FLIOP Complexity
+
+* mean of 10 trials
 
 <div align="center">
   <table>
@@ -87,6 +92,8 @@ This project has been developed on Visual Studio CMake project and Windows 11 en
 </div>
 
 ### Finding optimal schedules in FLIOP
+
+* mean of 100 trials
 
 <div align="center">
   <table>
@@ -166,6 +173,8 @@ Payload: 128, 160, 216, 264, 304, 352, 392, 440, 488, 544, 576, 632, 664, 720, 7
 
 ### Finding optimal schedules of coefficient version in FLIOP
 
+* mean of 100 trials
+
 <div align="center">
   <table>
     <tr>
@@ -243,6 +252,8 @@ Payload: 128, 160, 224, 248, 312, 376, 400, 464, 544, 568, 616, 696, 736, 784, 8
 ```
 
 ### Comparing optimum of baseline and coefficient version in FLIOP 3PC
+
+* mean of 100 trials (same data from the previous two experiments)
 
 <div align="center">
   <table>
